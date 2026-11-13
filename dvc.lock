@@ -1,0 +1,120 @@
+schema: '2.0'
+stages:
+  validate:
+    cmd: python -m training.validate --data data/raw/churn.csv --report 
+      reports/validation.json
+    deps:
+    - path: data/raw/churn.csv
+      hash: md5
+      md5: 8ed597e7a87a65293692274aa5a22d34
+      size: 540196
+    - path: training/validate.py
+      hash: md5
+      md5: 7ce39c96c349866cc212d34d006e326c
+      size: 3939
+    outs:
+    - path: reports/validation.json
+      hash: md5
+      md5: 8ea98f90a1605b865d6758f1ba2f87d6
+      size: 173
+  preprocess:
+    cmd: python -m training.preprocess --data data/raw/churn.csv --out-dir 
+      data/processed
+    deps:
+    - path: data/raw/churn.csv
+      hash: md5
+      md5: 8ed597e7a87a65293692274aa5a22d34
+      size: 540196
+    - path: training/preprocess.py
+      hash: md5
+      md5: 21abf80c55d674737862deac7068bc52
+      size: 2024
+    params:
+      params.yaml:
+        split:
+          test_size: 0.2
+          seed: 42
+    outs:
+    - path: data/processed
+      hash: md5
+      md5: eb07e69426cf6efb1a5223b9281233ef.dir
+      size: 538676
+      nfiles: 2
+  train:
+    cmd: python -m training.train --train data/processed/train.csv --model-dir 
+      models
+    deps:
+    - path: data/processed/train.csv
+      hash: md5
+      md5: 440e06ff152f192034b586b84a2ac76b
+      size: 431146
+    - path: training/train.py
+      hash: md5
+      md5: 0ac6bfe3c5a18f3af2b6645c7fb29bba
+      size: 3079
+    params:
+      params.yaml:
+        model:
+          type: logistic_regression
+          logistic_regression:
+            C: 1.0
+            max_iter: 500
+            class_weight: balanced
+          random_forest:
+            n_estimators: 200
+            max_depth: 8
+            class_weight: balanced
+            random_state: 42
+          gradient_boosting:
+            n_estimators: 150
+            learning_rate: 0.05
+            max_depth: 3
+            random_state: 42
+    outs:
+    - path: models/model.joblib
+      hash: md5
+      md5: c854c9b1f2f15d907803107059015324
+      size: 4737
+    - path: models/train_info.json
+      hash: md5
+      md5: abca4dbcff1ac7ed2281197557c7e571
+      size: 419
+  evaluate:
+    cmd: python -m training.evaluate --test data/processed/test.csv --model-dir 
+      models --reports-dir reports
+    deps:
+    - path: data/processed/test.csv
+      hash: md5
+      md5: a36eed031e2899e6e98bff306cf1a329
+      size: 107530
+    - path: models/model.joblib
+      hash: md5
+      md5: c854c9b1f2f15d907803107059015324
+      size: 4737
+    - path: training/evaluate.py
+      hash: md5
+      md5: 991d89d9f61fbaba876ff56665f9baa9
+      size: 5691
+    params:
+      params.yaml:
+        mlflow:
+          experiment: churn-training
+          registered_model: churn-classifier
+    outs:
+    - path: reports/metrics.json
+      hash: md5
+      md5: 9143b1f25fdd2fec13245575124c318d
+      size: 793
+  quality_gate:
+    cmd: python -m training.quality_gate --metrics reports/metrics.json
+    deps:
+    - path: reports/metrics.json
+      hash: md5
+      md5: 9143b1f25fdd2fec13245575124c318d
+      size: 793
+    params:
+      params.yaml:
+        quality_gate:
+          metric: f1
+          min_f1: 0.7
+          min_roc_auc: 0.8

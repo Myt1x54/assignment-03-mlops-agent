@@ -1,0 +1,33 @@
+{
+  "metrics": {
+    "accuracy": 0.7881,
+    "precision": 0.7993,
+    "recall": 0.8058,
+    "f1": 0.8026,
+    "roc_auc": 0.8695
+  },
+  "confusion_matrix": [
+    [
+      572,
+      173
+    ],
+    [
+      166,
+      689
+    ]
+  ],
+  "provenance": {
+    "data.version": "data-v2.0",
+    "data.dvc_md5": "8ed597e7a87a65293692274aa5a22d34",
+    "data.file_md5": "8ed597e7a87a65293692274aa5a22d34",
+    "data.in_sync": "true",
+    "data.path": "data/raw/churn.csv",
+    "git.commit": "ae6d3dfeb5c8738a936311e09064cac0bd511c6e",
+    "dvc.remote": "../../../mlops-dvc-remote",
+    "pipeline.run_id": "manual",
+    "model.type": "logistic_regression"
+  },
+  "run_id": "28a5155fee614129ba5ed6c673731dd2",
+  "model_version": "1",
+  "registered_model": "churn-classifier"
+}

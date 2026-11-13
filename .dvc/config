@@ -3,4 +3,4 @@
     autostage = true
     analytics = false
 ['remote "localremote"']
-    url = ../../../mlops-dvc-remote
+    url = ../../mlops-dvc-remote
