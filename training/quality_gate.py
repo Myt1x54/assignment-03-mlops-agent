@@ -39,13 +39,41 @@ def record_gate(result: dict[str, Any], passed: bool, reasons: list[str]) -> Non
     client.set_model_version_tag(result["registered_model"], result["model_version"], "quality_gate", status)
 
 
-def promote(result: dict[str, Any]) -> str:
+def is_better(candidate_f1: float, champion_f1: float | None) -> bool:
+    """Champion/challenger rule (DECISION D32): promote only on a strict F1 improvement."""
+    return champion_f1 is None or candidate_f1 > champion_f1
+
+
+def current_champion_f1(client: Any, registered_model: str) -> tuple[str | None, float | None]:
+    try:
+        mv = client.get_model_version_by_alias(registered_model, "champion")
+    except Exception:  # no champion yet
+        return None, None
+    return mv.version, client.get_run(mv.run_id).data.metrics.get("f1")
+
+
+def promote(result: dict[str, Any], force: bool = False) -> tuple[bool, str]:
+    """Move alias ``champion`` here if this version beats the current champion; returns (promoted, msg)."""
     from mlflow import MlflowClient
 
     client = MlflowClient(tracking_uri=os.environ.get("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"))
-    client.set_registered_model_alias(result["registered_model"], "champion", result["model_version"])
+    registered, version = result["registered_model"], result["model_version"]
+    champ_version, champ_f1 = current_champion_f1(client, registered)
+    f1 = result["metrics"]["f1"]
+    if not force and not is_better(f1, champ_f1):
+        msg = f"kept champion v{champ_version} (f1={champ_f1}); candidate v{version} f1={f1} is not better"
+        client.set_tag(result["run_id"], "promoted", "false")
+        client.set_tag(result["run_id"], "promotion.reason", msg)
+        client.set_model_version_tag(registered, version, "promotion", "skipped: not better than champion")
+        return False, msg
+    client.set_registered_model_alias(registered, "champion", version)
     client.set_tag(result["run_id"], "promoted", "true")
-    return result["model_version"]
+    client.set_tag(result["run_id"], "promotion.reason", f"f1 {f1} > previous champion f1 {champ_f1}")
+    client.set_model_version_tag(registered, version, "promotion", "promoted")
+    return (
+        True,
+        f"promoted v{version} (f1={f1}) to alias 'champion' (previous: v{champ_version}, f1={champ_f1})",
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -74,8 +102,9 @@ def main(argv: list[str] | None = None) -> int:
     if "run_id" not in result:
         print("refusing to promote: metrics were not logged to MLflow")
         return 1
-    print(f"promoted model version {promote(result)} to alias 'champion'")
-    return 0
+    _, message = promote(result)
+    print(message)
+    return 0  # not promoting a non-improving model is a normal outcome, not a task failure
 
 
 if __name__ == "__main__":

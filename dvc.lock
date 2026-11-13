@@ -93,8 +93,8 @@ stages:
       size: 4737
     - path: training/evaluate.py
       hash: md5
-      md5: 991d89d9f61fbaba876ff56665f9baa9
-      size: 5691
+      md5: 27753aac6e96582124d9234ab2dc0fd6
+      size: 6284
     params:
       params.yaml:
         mlflow:
@@ -103,15 +103,15 @@ stages:
     outs:
     - path: reports/metrics.json
       hash: md5
-      md5: 9143b1f25fdd2fec13245575124c318d
-      size: 793
+      md5: 8d50a310bd8b8adbb7906de2d75ab498
+      size: 790
   quality_gate:
     cmd: python -m training.quality_gate --metrics reports/metrics.json
     deps:
     - path: reports/metrics.json
       hash: md5
-      md5: 9143b1f25fdd2fec13245575124c318d
-      size: 793
+      md5: 8d50a310bd8b8adbb7906de2d75ab498
+      size: 790
     params:
       params.yaml:
         quality_gate:

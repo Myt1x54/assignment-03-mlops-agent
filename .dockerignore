@@ -7,7 +7,8 @@ mlflow.db
 data
 reports
 models
-infra
+infra/*
+!infra/ml-requirements.txt
 docs
 screenshots
 tests

@@ -223,3 +223,14 @@ Decisions are never renumbered or deleted.
 - **Decision:** Move it to `infra/kind-config.yaml` (cluster tooling sits next to docker compose). `kubernetes/` holds
   only objects the cluster can apply. The path in D26 should be read as `infra/kind-config.yaml`.
 - **Status:** Accepted (2026-11-14)
+
+## D32 — Champion/challenger promotion rule
+- **Context:** The first Airflow run promoted a logistic-regression model (F1 0.8026) over the seeded champion v7
+  (gradient boosting, F1 0.8121) simply because it passed the absolute quality gate.
+- **Decision:** `promote_model` moves alias `champion` only when the candidate passes the gate **and** has a strictly
+  higher F1 than the current champion. Otherwise it keeps the champion, tags the run `promoted=false` with a
+  `promotion.reason`, tags the model version `promotion=skipped: not better than champion`, and exits 0 (a normal
+  outcome, not a task failure). The seeding script uses `force=True` to set the initial champion.
+- **Rationale:** Prevents regressions in production; the recorded reason lets the agent answer "why was this model not
+  promoted?" from tool evidence. The one wrong promotion (v12) was reverted and tagged with the reason.
+- **Status:** Accepted (2026-11-14)

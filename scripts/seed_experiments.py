@@ -115,11 +115,8 @@ def main() -> int:
 
     eligible = [r for r in results if r["passed"] and r["dataset"] == "data-v2.0"]
     best = max(eligible, key=lambda r: r["metrics"]["f1"])
-    version = quality_gate.promote(best)
-    print(
-        f"\nseeded {len(results)} runs; champion = v{version} "
-        f"(f1={best['metrics']['f1']}, run {best['run_id']})"
-    )
+    _, message = quality_gate.promote(best, force=True)
+    print(f"\nseeded {len(results)} runs; {message}")
     return 0
 
 

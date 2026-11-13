@@ -10,10 +10,10 @@ Decisions referenced as `D<n>` are in `DECISION.md`.
 | S1 | Repository scaffold & reproducible environment | CI (5) | DONE (verified 2026-11-13) |
 | S2 | Dataset generation & DVC versioning | DVC (15) | AWAITING VERIFICATION |
 | S3 | Training code with MLflow logging & provenance | MLflow (15) | AWAITING VERIFICATION |
-| S4 | Local infra: MLflow server (docker compose) + seeded experiments | MLflow (15) | TODO |
-| S5 | FastAPI inference service + Dockerfile | K8s (15) | TODO |
-| S6 | Kubernetes cluster (kind) + manifests + deployment | K8s (15) | TODO |
-| S7 | Airflow 3 + training DAG with quality gate | Airflow (15) | TODO |
+| S4 | Local infra: MLflow server (docker compose) + seeded experiments | MLflow (15) | AWAITING VERIFICATION |
+| S5 | FastAPI inference service + Dockerfile | K8s (15) | AWAITING VERIFICATION |
+| S6 | Kubernetes cluster (kind) + manifests + deployment | K8s (15) | AWAITING VERIFICATION |
+| S7 | Airflow 3 + training DAG with quality gate | Airflow (15) | AWAITING VERIFICATION |
 | S8 | Agent core: schemas, tool registry, logging, safety layer | Integration / Safety | TODO |
 | S9 | DVC tools | DVC (15) | TODO |
 | S10 | MLflow tools | MLflow (15) | TODO |
