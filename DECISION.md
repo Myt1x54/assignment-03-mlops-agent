@@ -216,3 +216,10 @@ Decisions are never renumbered or deleted.
 - **Decision:** Remote `localremote` = `../../mlops-dvc-remote` in `.dvc/config`, which resolves to a sibling folder
   of the repo (`<parent>/mlops-dvc-remote`). README documents re-creating it with `dvc remote modify`.
 - **Status:** Accepted (2026-11-14)
+
+## D31 — kind cluster config lives in `infra/`
+- **Context:** With `kind-config.yaml` inside `kubernetes/`, `kubectl apply -f kubernetes/` tried to apply the kind
+  `Cluster` object and failed.
+- **Decision:** Move it to `infra/kind-config.yaml` (cluster tooling sits next to docker compose). `kubernetes/` holds
+  only objects the cluster can apply. The path in D26 should be read as `infra/kind-config.yaml`.
+- **Status:** Accepted (2026-11-14)

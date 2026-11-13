@@ -87,7 +87,7 @@ Decisions referenced as `D<n>` are in `DECISION.md`.
 ## S6 â€” Kubernetes cluster (kind) + manifests + deployment
 - **Goal:** Inference service running on Kubernetes per spec (D11).
 - **Tasks:**
-  1. `kind create cluster --name mlops`; `kind load docker-image mlops-api:0.1.0`.
+  1. `kind create cluster --config infra/kind-config.yaml`; `kind load docker-image mlops-api:0.1.0 --name mlops`.
   2. Manifests: `namespace.yaml` (`mlops-demo`), `configmap.yaml`, `deployment.yaml` (2 replicas, probes,
      requests/limits, version labels), `service.yaml` (ClusterIP).
   3. Read-only ServiceAccount/RBAC for the agent + a separate role for allowed write ops (D13).

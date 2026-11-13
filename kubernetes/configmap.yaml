@@ -1,0 +1,14 @@
+# Non-sensitive runtime configuration for the inference service (no secrets here).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: churn-api-config
+  namespace: mlops-demo
+  labels:
+    app.kubernetes.io/name: churn-api
+data:
+  APP_VERSION: "0.1.0"
+  MODEL_PATH: "/app/model/model.joblib"
+  MODEL_META_PATH: "/app/model/meta.json"
+  PREDICTION_THRESHOLD: "0.5"
+  LOG_LEVEL: "INFO"

@@ -1,0 +1,37 @@
+# Least-privilege identity for the MLOps agent (DECISION D13): read everything it needs in mlops-demo,
+# and only patch Deployments (rollout restart / scale). No access to Secrets, no other namespaces.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mlops-agent
+  namespace: mlops-demo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mlops-agent
+  namespace: mlops-demo
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "services", "endpoints", "events", "configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "deployments/scale"]
+    verbs: ["patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mlops-agent
+  namespace: mlops-demo
+subjects:
+  - kind: ServiceAccount
+    name: mlops-agent
+    namespace: mlops-demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: mlops-agent
