@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# Secrets & local config (never commit)
+.env
+*.env.local
+kubeconfig*
+*.kubeconfig
+*.pem
+*.key
+
+# MLflow / Airflow local state
+mlruns/
+mlartifacts/
+mlflow.db
+infra/airflow-logs/
+logs/
+
+# Model artifacts produced locally (exported from MLflow at build time)
+model/
+
+# DVC manages its own .gitignore entries for tracked data (see data/.gitignore after `dvc add`)
+/data/processed/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
