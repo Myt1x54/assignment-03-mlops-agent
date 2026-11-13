@@ -1,10 +1,10 @@
 {
   "path": "data\\raw\\churn.csv",
-  "rows": 5000,
+  "rows": 8000,
   "passed": true,
   "errors": [],
   "stats": {
-    "churn_rate": 0.3892,
-    "mean_monthly_charges": 60.14
+    "churn_rate": 0.5345,
+    "mean_monthly_charges": 72.44
   }
 }
