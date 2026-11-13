@@ -37,3 +37,4 @@ model/
 Thumbs.db
 .idea/
 .vscode/
+data/incoming/

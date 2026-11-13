@@ -1,0 +1,51 @@
+# DVC pipeline — same stages as the Airflow DAG (dags/training_pipeline.py).
+# Run with:  uv run dvc repro        (MLflow logging goes to $MLFLOW_TRACKING_URI)
+stages:
+  validate:
+    cmd: python -m training.validate --data data/raw/churn.csv --report reports/validation.json
+    deps:
+      - data/raw/churn.csv
+      - training/validate.py
+    metrics:
+      - reports/validation.json:
+          cache: false
+
+  preprocess:
+    cmd: python -m training.preprocess --data data/raw/churn.csv --out-dir data/processed
+    deps:
+      - data/raw/churn.csv
+      - training/preprocess.py
+    params:
+      - split
+    outs:
+      - data/processed
+
+  train:
+    cmd: python -m training.train --train data/processed/train.csv --model-dir models
+    deps:
+      - data/processed/train.csv
+      - training/train.py
+    params:
+      - model
+    outs:
+      - models/model.joblib
+      - models/train_info.json
+
+  evaluate:
+    cmd: python -m training.evaluate --test data/processed/test.csv --model-dir models --reports-dir reports
+    deps:
+      - data/processed/test.csv
+      - models/model.joblib
+      - training/evaluate.py
+    params:
+      - mlflow
+    metrics:
+      - reports/metrics.json:
+          cache: false
+
+  quality_gate:
+    cmd: python -m training.quality_gate --metrics reports/metrics.json
+    deps:
+      - reports/metrics.json
+    params:
+      - quality_gate

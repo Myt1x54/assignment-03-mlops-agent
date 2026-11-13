@@ -5,9 +5,22 @@ description = "Production-ready MLOps AI agent integrating DVC, MLflow, Airflow 
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "dvc>=3.67.1",
+    "fastapi>=0.162.6",
+    "google-genai>=3.3.0",
+    "joblib>=1.6.0",
+    "kubernetes>=37.0.2",
+    "mlflow>=3.18.0",
+    "numpy>=2.5.4",
+    "pandas>=3.1.1",
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
+    "python-dotenv>=1.2.4",
     "pyyaml>=6.0",
+    "requests>=2.34.2",
+    "rich>=15.0.0",
+    "scikit-learn>=1.9.1",
+    "uvicorn[standard]>=0.54.0",
 ]
 
 [dependency-groups]
@@ -15,6 +28,7 @@ dev = [
     "ruff>=0.8",
     "pytest>=8.3",
     "pytest-cov>=6.0",
+    "httpx",
 ]
 
 [tool.uv]

@@ -1,0 +1,29 @@
+split:
+  test_size: 0.2
+  seed: 42
+
+model:
+  type: logistic_regression        # logistic_regression | random_forest | gradient_boosting
+  logistic_regression:
+    C: 1.0
+    max_iter: 500
+    class_weight: balanced
+  random_forest:
+    n_estimators: 200
+    max_depth: 8
+    class_weight: balanced
+    random_state: 42
+  gradient_boosting:
+    n_estimators: 150
+    learning_rate: 0.05
+    max_depth: 3
+    random_state: 42
+
+mlflow:
+  experiment: churn-training
+  registered_model: churn-classifier
+
+quality_gate:
+  metric: f1
+  min_f1: 0.62           # promotion blocked below this F1 on the held-out test set
+  min_roc_auc: 0.75
