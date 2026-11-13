@@ -50,6 +50,18 @@ def compute_metrics(model: Any, test: pd.DataFrame) -> tuple[dict[str, float], l
     return {k: round(float(v), 4) for k, v in metrics.items()}, confusion_matrix(y_true, y_pred).tolist()
 
 
+def trusted_types(model: Any) -> list[str]:
+    """Types skops flags as untrusted in *our own* freshly trained pipeline (DECISION D29).
+
+    MLflow 3 stores sklearn models with skops (no arbitrary-code pickle). Some estimators (e.g. tree
+    internals) are not on skops' default allow-list; since this model was built in this very process
+    from scikit-learn classes, those types are trusted explicitly instead of falling back to pickle.
+    """
+    import skops.io
+
+    return skops.io.get_untrusted_types(data=skops.io.dumps(model))
+
+
 def log_to_mlflow(
     model: Any,
     metrics: dict[str, float],
@@ -91,6 +103,7 @@ def log_to_mlflow(
         info = mlflow.sklearn.log_model(
             model,
             name="model",
+            skops_trusted_types=trusted_types(model),
             registered_model_name=registered,
             input_example=test[FEATURES].head(3),
         )

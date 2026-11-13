@@ -1,0 +1,114 @@
+# Local MLOps platform: MLflow tracking server + Apache Airflow 3 (LocalExecutor).
+#   docker compose -f infra/docker-compose.yml --env-file .env up -d --build
+# UIs: MLflow http://localhost:5000   Airflow http://localhost:8080
+name: mlops
+
+x-airflow-common: &airflow-common
+  build:
+    context: ..
+    dockerfile: infra/airflow.Dockerfile
+  image: mlops-airflow:local
+  environment: &airflow-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-apiserver:8080/execution/
+    AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET:-change-me-local-only}
+    AIRFLOW__API__SECRET_KEY: ${AIRFLOW_JWT_SECRET:-change-me-local-only}
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+    AIRFLOW__DAG_PROCESSOR__REFRESH_INTERVAL: "30"
+    MLFLOW_TRACKING_URI: http://mlflow:5000
+  volumes:
+    - ../dags:/opt/airflow/dags
+    - ./airflow-logs:/opt/airflow/logs
+    - ..:/opt/project
+  user: "50000:0"
+  depends_on: &airflow-depends
+    postgres:
+      condition: service_healthy
+    mlflow:
+      condition: service_started
+
+services:
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v${MLFLOW_VERSION:-3.18.0}
+    container_name: mlflow
+    command: >
+      mlflow server --host 0.0.0.0 --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --artifacts-destination /mlflow/artifacts
+      --serve-artifacts
+      --allowed-hosts "*"
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow-data:/mlflow
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate &&
+        (airflow users create --role Admin --firstname Ml --lastname Ops --email admin@example.local \
+          --username "$${AIRFLOW_USERNAME}" --password "$${AIRFLOW_PASSWORD}" || true)
+    environment:
+      <<: *airflow-env
+      AIRFLOW_USERNAME: ${AIRFLOW_USERNAME:?set AIRFLOW_USERNAME in .env}
+      AIRFLOW_PASSWORD: ${AIRFLOW_PASSWORD:?set AIRFLOW_PASSWORD in .env}
+    restart: "no"
+
+  airflow-apiserver:
+    <<: *airflow-common
+    command: api-server
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/version"]
+      interval: 15s
+      retries: 10
+    depends_on:
+      <<: *airflow-depends
+      airflow-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    depends_on:
+      <<: *airflow-depends
+      airflow-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  airflow-dag-processor:
+    <<: *airflow-common
+    command: dag-processor
+    depends_on:
+      <<: *airflow-depends
+      airflow-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  mlflow-data:
+  airflow-db:

@@ -199,3 +199,20 @@ Decisions are never renumbered or deleted.
 - **Decision:** Remote `origin` = `https://github.com/Myt1x54/assignment-03-mlops-agent.git`, branch `main`.
   Commits are authored by the student only — no co-author/contributor trailers for the assistant.
 - **Status:** Accepted (2026-11-13) — supersedes the "user creates repo" part of D22.
+
+## D29 — MLflow model serialization: skops with explicit trusted types
+- **Context:** MLflow 3 logs sklearn models in the skops format by default (no arbitrary-code pickle). Tree-based
+  models (random forest, gradient boosting) contain `sklearn.tree._tree.Tree`, which skops refuses to load unless
+  it is explicitly trusted, so `log_model` failed for those models.
+- **Decision:** `training/evaluate.py::trusted_types()` asks skops which types it flags in the freshly trained
+  pipeline and passes exactly those as `skops_trusted_types`. We do **not** fall back to pickle/cloudpickle.
+- **Rationale:** Keeps the safer format; the trusted list is computed from a model this same process just built from
+  scikit-learn classes, so nothing foreign is trusted. `skops` is pinned in `infra/ml-requirements.txt`.
+- **Status:** Accepted (2026-11-14)
+
+## D30 — DVC remote path is stored relative to `.dvc/`
+- **Context:** `dvc remote add` with a relative path rewrites it relative to `.dvc/config`; the first push landed
+  one directory too high.
+- **Decision:** Remote `localremote` = `../../mlops-dvc-remote` in `.dvc/config`, which resolves to a sibling folder
+  of the repo (`<parent>/mlops-dvc-remote`). README documents re-creating it with `dvc remote modify`.
+- **Status:** Accepted (2026-11-14)
