@@ -32,7 +32,7 @@ def pod(name: str, ready: bool, restarts: int = 0, waiting: str | None = None):
     )
 
 
-def deployment(desired: int, ready: int):
+def deployment(desired: int, ready: int, updated: int | None = None):
     container = NS(image="mlops-api:0.1.0", env_from=[NS(config_map_ref=NS(name="churn-api-config"))])
     return NS(
         metadata=NS(name="churn-api", creation_timestamp=T0),
@@ -42,7 +42,12 @@ def deployment(desired: int, ready: int):
                 metadata=NS(labels={"app.kubernetes.io/version": "0.1.0"}), spec=NS(containers=[container])
             ),
         ),
-        status=NS(ready_replicas=ready, available_replicas=ready, updated_replicas=desired, conditions=[]),
+        status=NS(
+            ready_replicas=ready,
+            available_replicas=ready,
+            updated_replicas=desired if updated is None else updated,
+            conditions=[],
+        ),
     )
 
 
@@ -144,11 +149,23 @@ def test_find_unhealthy_reports_not_ready_crashloop_and_missing_endpoints(monkey
     assert "Readiness probe failed" in r.data["recent_warning_events"][0]["message"]
 
 
+def test_stalled_rollout_detected_while_old_pods_still_serve(monkeypatch, ctx):
+    """Failure F1 shape: new pod never Ready, maxUnavailable=0 keeps 2 old pods Ready."""
+    pods = [pod("old-1", True), pod("old-2", True), pod("new-1", False)]
+    install(monkeypatch, pods, deployment(2, 2, updated=1), 2)
+    r = execute_tool("k8s_find_unhealthy", {}, ctx)
+    assert r.data["healthy"] is False
+    assert r.data["degraded_deployments"] == []
+    assert r.data["stalled_rollouts"] == [{"name": "churn-api", "desired": 2, "updated": 1, "ready": 2}]
+    assert [p["name"] for p in r.data["unhealthy_pods"]] == ["new-1"]
+
+
 def test_pod_logs_surface_error_lines(monkeypatch, ctx):
     install(monkeypatch, [], deployment(2, 2), 2)
-    r = execute_tool("k8s_get_pod_logs", {"pod": "churn-api-x", "tail_lines": 800}, ctx)
+    r = execute_tool("k8s_get_pod_logs", {"pod": "churn-api-x", "tail_lines": 1}, ctx)
     assert r.status is ToolStatus.OK
-    assert any("model load failed" in line for line in r.data["error_lines"])
+    assert len(r.data["tail"]) == 1  # short tail returned...
+    assert any("model load failed" in line for line in r.data["error_lines"])  # ...error found in scan window
 
 
 def test_deployed_version_includes_live_model_version(monkeypatch, ctx):

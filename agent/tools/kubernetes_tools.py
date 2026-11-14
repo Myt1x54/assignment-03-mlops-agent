@@ -23,6 +23,7 @@ from agent.tools.base import ToolContext, tool
 SYSTEM = "kubernetes"
 _NAME = r"^[a-z0-9]([-a-z0-9.]{0,251}[a-z0-9])?$"
 DEFAULT_DEPLOYMENT = "churn-api"
+SCAN_LINES = 2000  # upper bound of log lines fetched to search for errors
 
 
 # --- client helpers -----------------------------------------------------------------------------------------
@@ -207,7 +208,9 @@ def k8s_list_pods(args: PodsIn, ctx: ToolContext) -> dict[str, Any]:
 def k8s_get_pod_logs(args: PodLogsIn, ctx: ToolContext) -> dict[str, Any]:
     ns = _ns(args, ctx)
     tail = clamp_tail(args.tail_lines, ctx.policy.safety.log_tail_max_lines)
-    kwargs: dict[str, Any] = {"tail_lines": tail, "previous": args.previous}
+    # Scan a bounded larger window for error lines (startup errors scroll out of a short tail behind probe
+    # access logs), but return only the requested tail to the LLM.
+    kwargs: dict[str, Any] = {"tail_lines": SCAN_LINES, "previous": args.previous}
     if args.container:
         kwargs["container"] = args.container
     text = kcall(ctx, get_apis(ctx).core.read_namespaced_pod_log, args.pod, ns, **kwargs) or ""
@@ -219,8 +222,9 @@ def k8s_get_pod_logs(args: PodLogsIn, ctx: ToolContext) -> dict[str, Any]:
         "namespace": ns,
         "pod": args.pod,
         "previous": args.previous,
-        "error_lines": errors[-15:],
-        "tail": lines,
+        "lines_scanned": len(lines),
+        "error_lines": list(dict.fromkeys(errors))[-15:],
+        "tail": lines[-tail:],
     }
 
 
@@ -324,25 +328,42 @@ def k8s_find_unhealthy(args: UnhealthyIn, ctx: ToolContext) -> dict[str, Any]:
         for s in kcall(ctx, apis.core.list_namespaced_service, ns).items
         if s.spec.selector and _ready_endpoints(ctx, apis, ns, s.metadata.name) == 0
     ]
+    # A rollout whose new pods never become Ready: with maxUnavailable=0 the old pods keep serving, so
+    # ready == desired, but updated < desired reveals the stuck rollout.
+    stalled = [
+        {"name": d["name"], "desired": d["desired"], "updated": d["updated"], "ready": d["ready"]}
+        for d in deployments
+        if (d["updated"] or 0) < (d["desired"] or 0) and any(not p["ready"] for p in pods)
+    ]
     warnings = kcall(ctx, apis.core.list_namespaced_event, ns, field_selector="type=Warning").items
+
+    def seen(e: Any) -> datetime:
+        return (
+            e.last_timestamp
+            or e.event_time
+            or e.metadata.creation_timestamp
+            or datetime.min.replace(tzinfo=UTC)
+        )
+
     recent_warnings = [
         {
             "reason": e.reason,
             "object": e.involved_object.name,
             "message": (e.message or "")[:200],
             "count": e.count,
-            "last_seen": _age(e.last_timestamp or e.event_time or e.metadata.creation_timestamp),
+            "last_seen": _age(seen(e)),
         }
-        for e in warnings[-10:]
+        for e in sorted(warnings, key=seen, reverse=True)[:10]
     ]
     return {
         "namespace": ns,
-        "healthy": not (bad_pods or degraded or no_endpoints),
+        "healthy": not (bad_pods or degraded or no_endpoints or stalled),
         "pods_total": len(pods),
         "unhealthy_pods": bad_pods,
         "degraded_deployments": [
             {k: d[k] for k in ("name", "desired", "ready", "available")} for d in degraded
         ],
+        "stalled_rollouts": stalled,
         "services_without_ready_endpoints": no_endpoints,
         "recent_warning_events": recent_warnings,
     }
