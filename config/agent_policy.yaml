@@ -1,0 +1,23 @@
+# Agent policy (AGENT.md §6, DECISION D17). Loaded and validated by agent/config.py::load_policy.
+# Values here are *evidence thresholds* for recommendations and *limits* for state-changing tools.
+# Allow-lists (approved DAGs, Kubernetes namespaces) come from the environment (.env) — see .env.example.
+
+retraining:
+  # Freshness policy: a production model older than this is a retraining signal.
+  max_model_age_days: 30
+  # Supplied degradation results (e.g. F1 on fresh labelled data) below this are a retraining signal.
+  # Matches quality_gate.min_f1 in params.yaml.
+  min_f1: 0.70
+  # A DVC dataset version newer than the one the production model was trained on is a signal.
+  newer_dataset_triggers: true
+  # The latest ml_training_pipeline run failing at quality_gate is a signal (investigate before retraining).
+  failed_quality_gate_triggers: true
+
+safety:
+  # k8s_scale_deployment accepts replicas only inside this range.
+  scale_min_replicas: 1
+  scale_max_replicas: 5
+  # Upper bound for any log tail requested by the LLM (pods, Airflow tasks).
+  log_tail_max_lines: 200
+  # A confirmation token issued for a state-changing action expires after this many seconds.
+  confirmation_ttl_seconds: 300

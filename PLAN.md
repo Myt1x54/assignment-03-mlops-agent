@@ -14,7 +14,7 @@ Decisions referenced as `D<n>` are in `DECISION.md`.
 | S5 | FastAPI inference service + Dockerfile | K8s (15) | AWAITING VERIFICATION |
 | S6 | Kubernetes cluster (kind) + manifests + deployment | K8s (15) | AWAITING VERIFICATION |
 | S7 | Airflow 3 + training DAG with quality gate | Airflow (15) | AWAITING VERIFICATION |
-| S8 | Agent core: schemas, tool registry, logging, safety layer | Integration / Safety | TODO |
+| S8 | Agent core: schemas, tool registry, logging, safety layer | Integration / Safety | AWAITING VERIFICATION |
 | S9 | DVC tools | DVC (15) | TODO |
 | S10 | MLflow tools | MLflow (15) | TODO |
 | S11 | Airflow tools | Airflow (15) | TODO |

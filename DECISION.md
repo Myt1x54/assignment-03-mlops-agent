@@ -234,3 +234,19 @@ Decisions are never renumbered or deleted.
 - **Rationale:** Prevents regressions in production; the recorded reason lets the agent answer "why was this model not
   promoted?" from tool evidence. The one wrong promotion (v12) was reverted and tagged with the reason.
 - **Status:** Accepted (2026-11-14)
+
+## D33 — Confirmation tokens bound to the exact action; tool inputs live next to tools
+- **Context:** S8 needs a confirmation workflow the LLM cannot satisfy on its own, and a home for per-tool inputs.
+- **Decision:**
+  - A state-changing tool first returns `confirmation_required` with a summary and an HMAC-signed token
+    (per-process random key) over `{tool, args, issued_at}`; tokens expire after
+    `safety.confirmation_ttl_seconds` (300 s). The token is stripped from what the LLM sees (`ToolResult.for_llm`)
+    and kept by the orchestrator, which re-executes only after a human types "yes".
+  - All tool input models inherit `ToolInput` (`extra="forbid"`), so an LLM-supplied `confirmed=true` is a
+    validation error, never an approval.
+  - Per-tool input models are defined in the tool module that uses them (`agent/tools/<system>_tools.py`);
+    `agent/schemas.py` keeps only shared contracts. Supersedes the "per-tool input models in schemas.py" wording
+    of PLAN S8 task 1.
+- **Rationale:** An approval for "restart churn-api" cannot be replayed for another deployment, namespace or replica
+  count, and cannot be forged by the model.
+- **Status:** Accepted (2026-11-14)
