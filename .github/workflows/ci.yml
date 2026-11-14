@@ -1,0 +1,78 @@
+# CI (DECISION D20): lint, format check, unit tests with coverage, Kubernetes manifest + DAG validation.
+# Runs on every pull request and on pushes to main. No secrets are needed: every external service is mocked
+# in the unit tests, and live integration tests (-m integration) are excluded by default.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.0"
+          enable-cache: true
+
+      - name: Install Python 3.12 + locked dependencies
+        run: |
+          uv python install 3.12
+          uv sync --locked
+
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+      - name: Unit tests (all services mocked)
+        env:
+          MLFLOW_DISABLE_AGENT_HINT: "1"
+        run: uv run pytest -q --cov=agent --cov=training --cov=api --cov-report=term --cov-report=xml
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: ignore
+
+  manifests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Kubernetes manifests (kubeconform, strict)
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz \
+            | tar xz kubeconform
+          ./kubeconform -strict -summary -kubernetes-version 1.33.0 kubernetes/
+
+      - name: Check required production settings in the Deployment
+        run: |
+          set -e
+          f=kubernetes/deployment.yaml
+          grep -q "replicas: 2" $f
+          grep -q "readinessProbe" $f
+          grep -q "livenessProbe" $f
+          grep -q "limits:" $f
+          grep -q "requests:" $f
+          grep -q "type: ClusterIP" kubernetes/service.yaml
+          echo "deployment has replicas, probes, requests/limits; service is ClusterIP"

@@ -21,7 +21,7 @@ Decisions referenced as `D<n>` are in `DECISION.md`.
 | S12 | Kubernetes tools (with confirmation + namespace guard) | K8s (15) | AWAITING VERIFICATION |
 | S13 | LLM orchestrator + CLI + mandatory scenario | Integration (15) | IN PROGRESS (code + offline tests done; live Gemini run needs API key) |
 | S14 | Test suite (≥ 8, target ~25) | Testing (10) | AWAITING VERIFICATION |
-| S15 | GitHub repo + Actions CI | CI (5) | TODO |
+| S15 | GitHub repo + Actions CI | CI (5) | IN PROGRESS (CI on main; PR check pending) |
 | S16 | Failure injection & diagnosis (2+) | Testing / Demo | TODO |
 | S17 | Demo scenarios & evidence capture | Demo (10) | TODO |
 | S18 | Documentation, report, final review, submission | Submission | TODO |
