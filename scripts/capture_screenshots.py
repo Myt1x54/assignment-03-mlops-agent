@@ -71,7 +71,7 @@ TERMINAL_SETS = {
             "mlops-demo",
             "--as=system:serviceaccount:mlops-demo:mlops-agent",
         ],
-    ],  # fmt: skip
+    ],
     "dvc_versions": [
         ["git", "tag", "-n1", "--list", "data-*"],
         [sys.executable, "-m", "dvc", "diff", "data-v1.0", "data-v2.0"],
