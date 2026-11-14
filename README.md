@@ -20,7 +20,7 @@ them itself.
 | [`architecture.md`](architecture.md) | Diagrams, request flow, all 27 tools with permissions, failure contract |
 | [`docs/report/REPORT.md`](docs/report/REPORT.md) | Technical report: evidence, five demo conversations, failure investigations, limitations |
 | [`AGENT.md`](AGENT.md) | Runtime agent specification (reasoning rules, tool catalogue, retraining policy) |
-| [`DECISION.md`](DECISION.md) | Architecture decision log D0-D34 |
+| [`DECISION.md`](DECISION.md) | Architecture decision log D0-D38 |
 | [`PLAN.md`](PLAN.md) | Implementation steps S0-S18 |
 
 ---
@@ -37,7 +37,7 @@ kubernetes/       namespace, ConfigMap, Deployment, Service, RBAC
 infra/            docker-compose (MLflow + Airflow), Airflow image, kind cluster config
 scripts/          seed_experiments, export_model, bootstrap_data, failures (injection)
 config/           agent_policy.yaml (retraining thresholds, safety limits)
-tests/            130 pytest tests (120 unit, fully mocked + 10 live integration, opt-in)
+tests/            154 pytest tests (144 unit, fully mocked + 10 live integration, opt-in)
 docs/report/      technical report, failure investigations, conversation transcripts
 screenshots/      evidence from MLflow, Airflow, Kubernetes, DVC
 ```
@@ -178,7 +178,7 @@ Example questions:
 
 ```bash
 uv run ruff check . && uv run ruff format --check .
-uv run pytest -q                                    # 120 unit tests, all services mocked, ~10 s
+uv run pytest -q                                    # 144 unit tests, all services mocked, ~10 s
 uv run pytest -q --cov=agent --cov=training --cov=api
 uv run pytest -q -m integration                     # 10 live checks against the running platform
 ```
@@ -213,8 +213,12 @@ The investigations are written up in [`docs/report/failures.md`](docs/report/fai
 - Human confirmation: write tools return `confirmation_required`. The orchestrator shows the exact action, and
   only on `yes` re-executes it with an HMAC token bound to that tool and those arguments. The token expires
   after 5 minutes and is never shown to the LLM.
+- Intent guard: if your message names a namespace, deployment, DAG or replica count, a write call that
+  targets anything else is rejected (`IntentMismatch`) before you are even asked.
 - No invention:
   - failed tools are marked "Not verified" in the answer;
+  - a retraining verdict without evidence for every policy criterion is marked *cannot be fully
+    determined*;
   - a grounding check flags figures that appear in no tool result;
   - the evidence table is built from the actual tool results.
 - Cluster RBAC (`kubernetes/rbac.yaml`) mirrors these rules: the agent's account has read access plus `patch` on

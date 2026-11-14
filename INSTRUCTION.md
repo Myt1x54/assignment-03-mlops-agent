@@ -131,7 +131,7 @@ assignment-03-mlops-agent/
 | Airflow (15) | `dags/training_pipeline.py`, `agent/tools/airflow_tools.py` (5 tools), `tests/test_airflow_tools.py`, `tests/test_dag_structure.py`, `screenshots/airflow_*.png`, transcripts S3, F2 |
 | Kubernetes (15) | `kubernetes/*.yaml`, `api/main.py`, `Dockerfile`, `agent/tools/kubernetes_tools.py` (9 tools), `tests/test_kubernetes_tools.py`, `screenshots/kubernetes_*.png`, transcripts S4, F1 |
 | Integration (15) | `agent/orchestrator.py`, `agent/llm.py`, `agent/prompts.py`, transcript S5 (mandatory scenario), `tests/test_orchestrator.py` |
-| Testing & safety (10) | 120 unit + 10 integration tests; `agent/safety.py`, `agent/logging_utils.py`; `docs/report/failures.md` (F1, F2, F3, U1) |
+| Testing & safety (10) | 144 unit + 10 integration tests; `agent/safety.py`, `agent/logging_utils.py`; `docs/report/failures.md` (F1, F2, F3, U1) |
 | GitHub + CI (5) | `pyproject.toml` + `uv.lock`, `.github/workflows/ci.yml`, CI run on the `submission-review` pull request |
 | Demo + defense (10) | `docs/report/transcripts/` (S1-S5, F1-F3, U1), `docs/report/REPORT.md` §9, `architecture.md` |
 | Documents | `README.md`, `docs/report/REPORT.md`, `architecture.md` |

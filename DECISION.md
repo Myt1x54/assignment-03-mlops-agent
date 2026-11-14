@@ -293,3 +293,23 @@ Decisions are never renumbered or deleted.
 - **Rationale:** Safety must not depend on the LLM following instructions. Policy is enforced in code (allow-list),
   intent in code (this guard) and consent by the human (confirmation).
 - **Status:** Accepted (2026-11-14)
+
+## D38 — Close the two known gaps: retraining-verdict coverage check, full intent guard
+- **Context:** The final review listed two remaining weaknesses:
+  - In F3 (MLflow down) the model still gave a "retraining not indicated" verdict although model age and gate
+    status could not be checked.
+  - The D37 intent guard covered namespaces only.
+- **Decision:**
+  - **Retraining verdict check (deterministic).** If the answer states a retraining verdict, the orchestrator
+    checks that every policy criterion was established by a *successful* tool call in the same request:
+    - model age and gate (an MLflow tool);
+    - latest pipeline run (an Airflow tool);
+    - newest dataset version (a DVC tool).
+    Any uncovered criterion appends a "Retraining verdict check" note: *cannot be fully determined*. Markdown
+    emphasis is ignored when matching.
+  - **Intent guard extended** to deployment names (`deployment X`, `X deployment`, `deploy/X`), DAG ids (snake_case
+    ids next to "dag"/"pipeline") and replica counts (`N replicas`). Each field is enforced only when the user's
+    message names a value. A mismatch is rejected as `IntentMismatch` before confirmation or any API call.
+- **Evidence:** `tests/test_intent_and_verdict.py` (allowed/refused matrix, verdict phrasings, F3 regression); the
+  re-run F3 transcript shows the check firing live.
+- **Status:** Accepted (2026-11-14) — extends D37.
