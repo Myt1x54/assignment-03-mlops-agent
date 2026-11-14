@@ -13,6 +13,7 @@ import argparse
 import json
 import re
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -80,7 +81,13 @@ def save_transcript(turns: list[Turn], model: str, path: Path | None) -> Path:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="MLOps AI agent (DVC + MLflow + Airflow + Kubernetes)")
-    parser.add_argument("--once", metavar="QUESTION", help="answer one question and exit")
+    parser.add_argument(
+        "--once",
+        metavar="QUESTION",
+        action="append",
+        help="answer this question and exit (repeat for a scripted multi-turn session)",
+    )
+    parser.add_argument("--wait", type=float, default=0.0, help="seconds to pause between --once questions")
     parser.add_argument(
         "--transcript", type=Path, help="transcript path (default: docs/report/transcripts/...)"
     )
@@ -98,13 +105,15 @@ def main(argv: list[str] | None = None) -> int:
     agent = Orchestrator(llm, settings=settings, confirm=terminal_confirm)
     turns: list[Turn] = []
 
-    questions = [args.once] if args.once else None
+    questions = list(args.once) if args.once else None
     banner = f"MLOps agent ready - model `{settings.agent_model}`, namespace `{settings.k8s_namespace}`."
     console.print(Panel(f"{banner} Type 'exit' to quit.", border_style="cyan"))
     while True:
         if questions is not None:
             if not questions:
                 break
+            if turns and args.wait:
+                time.sleep(args.wait)
             question = questions.pop(0)
             console.print(f"[bold cyan]You:[/bold cyan] {question}")
         else:

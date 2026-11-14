@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=REPO_ROOT / ".env", extra="ignore", env_file_encoding="utf-8")
 
     gemini_api_key: SecretStr = SecretStr("")
-    agent_model: str = "gemini-flash-latest"
+    agent_model: str = "gemini-3.5-flash"
 
     mlflow_tracking_uri: str = "http://localhost:5000"
 

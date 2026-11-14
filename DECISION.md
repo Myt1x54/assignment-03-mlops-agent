@@ -260,3 +260,12 @@ Decisions are never renumbered or deleted.
   under `data/` (no `..`), passed as DAG conf.
 - **Rationale:** Defense in depth: even if the model misreads intent, nothing runs without a human "yes".
 - **Status:** Accepted (2026-11-14)
+
+## D35 — Default LLM: `gemini-3.5-flash`
+- **Context:** With the user's AI Studio key, `gemini-flash-latest` returned 404 for `generateContent`, the
+  2.5-generation models are closed to new users, and `gemini-3.8-flash` timed out (HTTP 504 after ~58 s) in a probe.
+  `gemini-3.5-flash` answered a tool-calling probe correctly in ~1.3 s.
+- **Decision:** Default `AGENT_MODEL=gemini-3.5-flash` (overridable in `.env`). The Gemini client now has a 60 s HTTP
+  timeout so a slow model fails (5xx/timeouts are retried with backoff) instead of hanging the CLI. Supersedes the
+  model choice in D25 (the provider choice stays).
+- **Status:** Accepted (2026-11-14)

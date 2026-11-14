@@ -119,7 +119,7 @@ class Orchestrator:
                     f"Stopped before a final answer ({stopped.replace('_', ' ')} reached). "
                     "Partial evidence is listed below."
                 )
-            answer = self._finalize(text, turn.results)
+            answer = self._finalize(text, turn.results, check_grounding=stopped != "llm_error")
             turn.response = AgentResponse(
                 request_id=request_id,
                 answer=answer,
@@ -193,7 +193,7 @@ class Orchestrator:
             duration_ms=result.duration_ms,
         )
 
-    def _finalize(self, text: str, results: list[ToolResult]) -> str:
+    def _finalize(self, text: str, results: list[ToolResult], check_grounding: bool = True) -> str:
         parts = [text.strip() or "(no answer text)"]
         failed = [r for r in results if r.status not in (ToolStatus.OK,)]
         if failed:
@@ -203,7 +203,7 @@ class Orchestrator:
                 + "; ".join(f"`{r.tool}` -> {r.status.value} [{r.evidence_id}]" for r in failed)
                 + f". Facts from {', '.join(systems)} could not be confirmed by tools in this request."
             )
-        ungrounded = ungrounded_figures(text, results)
+        ungrounded = ungrounded_figures(text, results) if check_grounding else []
         if ungrounded:
             parts.append(
                 "> **Grounding check:** these figures in the answer do not appear in any tool result: "

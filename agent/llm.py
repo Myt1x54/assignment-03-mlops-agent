@@ -57,8 +57,10 @@ class GeminiClient:
         if not api_key or api_key == "replace-me":
             raise LLMError("GEMINI_API_KEY is not set (put it in .env; see .env.example)")
         from google import genai
+        from google.genai import types
 
-        self._client = genai.Client(api_key=api_key)
+        # Bounded HTTP timeout: a slow/overloaded model must fail (and be retried) rather than hang.
+        self._client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=60_000))
         self.model = model
         self.max_retries = max_retries
         self.base_delay = base_delay
