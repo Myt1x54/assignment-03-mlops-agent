@@ -17,7 +17,7 @@ Decisions referenced as `D<n>` are in `DECISION.md`.
 | S8 | Agent core: schemas, tool registry, logging, safety layer | Integration / Safety | AWAITING VERIFICATION |
 | S9 | DVC tools | DVC (15) | AWAITING VERIFICATION |
 | S10 | MLflow tools | MLflow (15) | AWAITING VERIFICATION |
-| S11 | Airflow tools | Airflow (15) | TODO |
+| S11 | Airflow tools | Airflow (15) | AWAITING VERIFICATION |
 | S12 | Kubernetes tools (with confirmation + namespace guard) | K8s (15) | TODO |
 | S13 | LLM orchestrator + CLI + mandatory scenario | Integration (15) | TODO |
 | S14 | Test suite (≥ 8, target ~25) | Testing (10) | TODO |

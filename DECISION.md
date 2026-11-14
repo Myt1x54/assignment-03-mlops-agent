@@ -250,3 +250,13 @@ Decisions are never renumbered or deleted.
 - **Rationale:** An approval for "restart churn-api" cannot be replayed for another deployment, namespace or replica
   count, and cannot be forged by the model.
 - **Status:** Accepted (2026-11-14)
+
+## D34 — Triggering the training DAG also needs human confirmation
+- **Context:** AGENT.md marks `airflow_trigger_dag` as **W** (approved DAG only). A training run costs compute,
+  writes new model versions and may promote a champion, and the mandatory scenario requires that analysis
+  questions never trigger it.
+- **Decision:** `airflow_trigger_dag` is **W C**: DAG allow-list check first (non-approved → `rejected`), then the
+  same orchestrator-held confirmation token as the Kubernetes write tools. Optional `data_path` must be a `.csv`
+  under `data/` (no `..`), passed as DAG conf.
+- **Rationale:** Defense in depth: even if the model misreads intent, nothing runs without a human "yes".
+- **Status:** Accepted (2026-11-14)
