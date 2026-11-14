@@ -139,7 +139,9 @@ def run(
         result.update(log_to_mlflow(model, metrics, cm, train_info, params, tags, test, reports_dir))
 
     reports_dir.mkdir(parents=True, exist_ok=True)
-    (reports_dir / "metrics.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+    (reports_dir / "metrics.json").write_text(
+        json.dumps(result, indent=2) + "\n", encoding="utf-8", newline="\n"
+    )
     print(
         f"evaluate: {metrics}  run_id={result.get('run_id', '-')}  version={result.get('model_version', '-')}"
     )

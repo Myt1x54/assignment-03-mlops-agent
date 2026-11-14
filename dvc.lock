@@ -10,13 +10,13 @@ stages:
       size: 540196
     - path: training/validate.py
       hash: md5
-      md5: 7ce39c96c349866cc212d34d006e326c
-      size: 3939
+      md5: 05208c4e88099a3fb1c31a26e5563e93
+      size: 4075
     outs:
     - path: reports/validation.json
       hash: md5
-      md5: 8ea98f90a1605b865d6758f1ba2f87d6
-      size: 173
+      md5: 61f91aeae7f23cafd0be5a92a08a2cc5
+      size: 165
   preprocess:
     cmd: python -m training.preprocess --data data/raw/churn.csv --out-dir 
       data/processed
@@ -50,8 +50,8 @@ stages:
       size: 431146
     - path: training/train.py
       hash: md5
-      md5: 0ac6bfe3c5a18f3af2b6645c7fb29bba
-      size: 3079
+      md5: 6a9fe6629031a7e75918604b5fe3f92f
+      size: 3198
     params:
       params.yaml:
         model:
@@ -77,8 +77,8 @@ stages:
       size: 4737
     - path: models/train_info.json
       hash: md5
-      md5: abca4dbcff1ac7ed2281197557c7e571
-      size: 419
+      md5: 390ee8e520cb8d1a71723157257795f9
+      size: 399
   evaluate:
     cmd: python -m training.evaluate --test data/processed/test.csv --model-dir 
       models --reports-dir reports
@@ -93,8 +93,8 @@ stages:
       size: 4737
     - path: training/evaluate.py
       hash: md5
-      md5: 27753aac6e96582124d9234ab2dc0fd6
-      size: 6284
+      md5: af34fe5f7699505f94aaa72dd902ecec
+      size: 6482
     params:
       params.yaml:
         mlflow:
@@ -103,15 +103,15 @@ stages:
     outs:
     - path: reports/metrics.json
       hash: md5
-      md5: 8d50a310bd8b8adbb7906de2d75ab498
-      size: 790
+      md5: d8f4377f8909b670d111e094fc071575
+      size: 759
   quality_gate:
     cmd: python -m training.quality_gate --metrics reports/metrics.json
     deps:
     - path: reports/metrics.json
       hash: md5
-      md5: 8d50a310bd8b8adbb7906de2d75ab498
-      size: 790
+      md5: d8f4377f8909b670d111e094fc071575
+      size: 759
     params:
       params.yaml:
         quality_gate:

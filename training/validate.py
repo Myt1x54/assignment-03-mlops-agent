@@ -103,7 +103,7 @@ def main(argv: list[str] | None = None) -> int:
 
     report = validate_file(args.data)
     args.report.parent.mkdir(parents=True, exist_ok=True)
-    args.report.write_text(json.dumps(asdict(report), indent=2), encoding="utf-8")
+    args.report.write_text(json.dumps(asdict(report), indent=2) + "\n", encoding="utf-8", newline="\n")
     status = "PASSED" if report.passed else "FAILED"
     print(f"validation {status}: rows={report.rows} errors={len(report.errors)}")
     for err in report.errors:

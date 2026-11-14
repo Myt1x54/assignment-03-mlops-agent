@@ -22,12 +22,12 @@
     "data.file_md5": "8ed597e7a87a65293692274aa5a22d34",
     "data.in_sync": "true",
     "data.path": "data/raw/churn.csv",
-    "git.commit": "96c48cb54191ba1b425d0e33d3c2b9212c2a1f0c",
+    "git.commit": "aef9ca9e2bb600f05e58f576c710d09750ca65f6",
     "dvc.remote": "../../mlops-dvc-remote",
     "pipeline.run_id": "manual",
     "model.type": "logistic_regression"
   },
-  "run_id": "149c8305d6b444869f074880d19e9e7d",
-  "model_version": "2",
+  "run_id": "6871722f1a56427ea61cc9920c9e882c",
+  "model_version": "3",
   "registered_model": "churn-classifier"
 }

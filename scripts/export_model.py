@@ -45,7 +45,7 @@ def main() -> None:
         "data_dvc_md5": run.data.tags.get("data.dvc_md5"),
         "f1": run.data.metrics.get("f1"),
     }
-    (args.out / "meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    (args.out / "meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(f"exported {args.model} v{mv.version} (@{args.alias}) -> {args.out}")
 
 

@@ -63,7 +63,9 @@ def run(train_path: Path, model_dir: Path, model_type: str, hyperparams: dict[st
         "train_seconds": duration,
         "features": FEATURES,
     }
-    (model_dir / "train_info.json").write_text(json.dumps(info, indent=2), encoding="utf-8")
+    (model_dir / "train_info.json").write_text(
+        json.dumps(info, indent=2) + "\n", encoding="utf-8", newline="\n"
+    )
     print(f"train: {model_type} fitted on {len(df)} rows in {duration}s -> {model_dir / 'model.joblib'}")
     return info
 
