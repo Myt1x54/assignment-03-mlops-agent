@@ -37,7 +37,7 @@ kubernetes/       namespace, ConfigMap, Deployment, Service, RBAC
 infra/            docker-compose (MLflow + Airflow), Airflow image, kind cluster config
 scripts/          seed_experiments, export_model, bootstrap_data, failures (injection)
 config/           agent_policy.yaml (retraining thresholds, safety limits)
-tests/            124 pytest tests (114 unit, fully mocked + 10 live integration, opt-in)
+tests/            130 pytest tests (120 unit, fully mocked + 10 live integration, opt-in)
 docs/report/      technical report, failure investigations, conversation transcripts
 screenshots/      evidence from MLflow, Airflow, Kubernetes, DVC
 ```
@@ -178,7 +178,7 @@ Example questions:
 
 ```bash
 uv run ruff check . && uv run ruff format --check .
-uv run pytest -q                                    # 114 unit tests, all services mocked, ~10 s
+uv run pytest -q                                    # 120 unit tests, all services mocked, ~10 s
 uv run pytest -q --cov=agent --cov=training --cov=api
 uv run pytest -q -m integration                     # 10 live checks against the running platform
 ```
