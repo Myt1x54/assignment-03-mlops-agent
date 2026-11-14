@@ -193,6 +193,34 @@ def test_unauthorized_k8s_change_wrong_namespace_rejected(settings, backends):
     assert backends.k8s.apps.patches == []
 
 
+def test_llm_substituting_the_named_namespace_is_rejected(settings, backends):
+    """User asked for namespace 'default'; the model "helpfully" targets mlops-demo -> refused, no prompt."""
+    asked = []
+    call = ToolCall("k8s_restart_deployment", {"deployment": "churn-api", "namespace": "mlops-demo"})
+    agent, _ = agent_with(
+        [LLMReply(tool_calls=[call]), LLMReply(text="Refused.")],
+        settings,
+        confirm=lambda s, a: asked.append(s) or True,
+    )
+    turn = agent.ask("restart the churn-api deployment in the default namespace")
+    assert turn.results[0].status is ToolStatus.REJECTED
+    assert turn.results[0].error.type == "IntentMismatch"
+    assert asked == []
+    assert backends.k8s.apps.patches == []
+
+
+def test_intent_guard_allows_matching_or_unnamed_namespace():
+    from agent.orchestrator import intent_mismatch
+    from agent.tools import load_all
+
+    load_all()
+    call = ToolCall("k8s_restart_deployment", {"deployment": "churn-api"})
+    assert intent_mismatch("restart churn-api", call, "mlops-demo") is None
+    assert intent_mismatch("restart churn-api in the mlops-demo namespace", call, "mlops-demo") is None
+    assert intent_mismatch("restart it in namespace prod", call, "mlops-demo") is not None
+    assert intent_mismatch("list pods in namespace prod", ToolCall("k8s_list_pods", {}), "mlops-demo") is None
+
+
 def test_k8s_change_declined_by_human_is_not_executed(settings, backends):
     agent, llm = agent_with(
         [LLMReply(tool_calls=[ToolCall("k8s_restart_deployment", {})]), LLMReply(text="Not restarted.")],

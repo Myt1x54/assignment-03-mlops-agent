@@ -280,3 +280,16 @@ Decisions are never renumbered or deleted.
 - **Rationale:** Keeps the agent usable on a free key without hiding failures. If every model is exhausted the
   orchestrator reports `llm_error` honestly instead of inventing an answer.
 - **Status:** Accepted (2026-11-14)
+
+## D37 — Deterministic intent guard against target substitution
+- **Context (unexpected failure found in the live demo):** The user asked to "restart the churn-api deployment in the
+  default namespace". `gemini-3.5-flash-lite` called `k8s_restart_deployment` with namespace **`mlops-demo`**
+  instead. It silently replaced the user's target with the allowed one, so the call reached the confirmation
+  prompt instead of being rejected (transcript `unexpected-llm-namespace-substitution.md`). The human gate caught
+  it because the panel shows the real target, and a new prompt rule (#9) did not change the model's behaviour.
+- **Decision:** The orchestrator compares every state-changing call with the user's message. If the message names
+  a namespace (`namespace X`, `X namespace`, `-n X`) and the call targets a different one, the call is rejected
+  with `IntentMismatch` before any confirmation or API call. Read-only tools are not affected.
+- **Rationale:** Safety must not depend on the LLM following instructions. Policy is enforced in code (allow-list),
+  intent in code (this guard) and consent by the human (confirmation).
+- **Status:** Accepted (2026-11-14)

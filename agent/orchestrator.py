@@ -23,7 +23,7 @@ from agent.config import Policy, Settings, get_settings, load_policy
 from agent.llm import LLMClient, ToolCall
 from agent.logging_utils import get_logger, register_secrets, request_id_var
 from agent.prompts import system_prompt
-from agent.schemas import AgentResponse, EvidenceRow, ToolError, ToolResult, ToolStatus
+from agent.schemas import AgentResponse, EvidenceRow, Permission, ToolError, ToolResult, ToolStatus
 from agent.tools import load_all
 from agent.tools.base import REGISTRY, ToolContext, declarations, execute_tool
 
@@ -77,6 +77,7 @@ class Orchestrator:
         started = time.monotonic()
         log.info("request", extra={"question_chars": len(question)})
         try:
+            self._question = question
             self.history.append({"role": "user", "text": question})
             text, iterations, stopped = "", 0, "completed"
             while True:
@@ -119,7 +120,9 @@ class Orchestrator:
                     f"Stopped before a final answer ({stopped.replace('_', ' ')} reached). "
                     "Partial evidence is listed below."
                 )
-            answer = self._finalize(text, turn.results, check_grounding=stopped != "llm_error")
+            answer = self._finalize(
+                text, turn.results, check_grounding=stopped != "llm_error", question=question
+            )
             turn.response = AgentResponse(
                 request_id=request_id,
                 answer=answer,
@@ -140,6 +143,15 @@ class Orchestrator:
 
     def _run_calls(self, calls: list[ToolCall], request_id: str, turn: Turn) -> list[ToolResult]:
         def run(call: ToolCall) -> ToolResult:
+            mismatch = intent_mismatch(getattr(self, "_question", ""), call, self.settings.k8s_namespace)
+            if mismatch:
+                log.warning("intent mismatch", extra={"tool": call.name})
+                return ToolResult(
+                    tool=call.name,
+                    request_id=request_id,
+                    status=ToolStatus.REJECTED,
+                    error=ToolError(type="IntentMismatch", message=mismatch),
+                )
             return execute_tool(call.name, call.args, ToolContext(request_id, self.settings, self.policy))
 
         with ThreadPoolExecutor(max_workers=min(8, len(calls))) as pool:
@@ -193,7 +205,9 @@ class Orchestrator:
             duration_ms=result.duration_ms,
         )
 
-    def _finalize(self, text: str, results: list[ToolResult], check_grounding: bool = True) -> str:
+    def _finalize(
+        self, text: str, results: list[ToolResult], check_grounding: bool = True, question: str = ""
+    ) -> str:
         parts = [text.strip() or "(no answer text)"]
 
         def recovered(i: int, r: ToolResult) -> bool:
@@ -215,7 +229,7 @@ class Orchestrator:
                 + "; ".join(f"`{r.tool}` -> {r.status.value} [{r.evidence_id}]" for r in failed)
                 + f". Facts from {', '.join(systems)} could not be confirmed by tools in this request."
             )
-        ungrounded = ungrounded_figures(text, results) if check_grounding else []
+        ungrounded = ungrounded_figures(text, results, question) if check_grounding else []
         if ungrounded:
             parts.append(
                 "> **Grounding check:** these figures in the answer do not appear in any tool result: "
@@ -231,9 +245,15 @@ _FIGURE = re.compile(
 _CITATION = re.compile(r"\[E\d+\]")
 
 
-def ungrounded_figures(text: str, results: list[ToolResult]) -> list[str]:
+def ungrounded_figures(text: str, results: list[ToolResult], question: str = "") -> list[str]:
     """Numbers/versions in the answer found in no tool result payload (deterministic no-invention guard)."""
-    corpus = " ".join(json.dumps(r.data, default=str) for r in results if r.status is ToolStatus.OK)
+    # Allowed sources: successful payloads, error messages (e.g. "replicas=10 outside 1..5") and the
+    # user's own question (figures the user stated are not invented by the model).
+    corpus = " ".join(
+        [json.dumps(r.data, default=str) for r in results if r.status is ToolStatus.OK]
+        + [r.error.message for r in results if r.error]
+        + [question]
+    )
     figures = dict.fromkeys(_FIGURE.findall(_CITATION.sub("", text)))
     missing = []
     for fig in figures:
@@ -257,3 +277,30 @@ def evidence_table(results: list[ToolResult]) -> str:
         detail = Orchestrator._summary(r).replace("|", "/")
         lines.append(f"| {r.evidence_id} | `{r.tool}` | {r.status.value} | {r.duration_ms} | {detail} |")
     return "\n".join(lines)
+
+
+_NAMESPACE_MENTION = re.compile(
+    r"\bnamespaces?\s+[`'\"]?(?P<a>[a-z0-9][a-z0-9-]*)"
+    r"|\b(?P<b>[a-z0-9][a-z0-9-]*)[`'\"]?\s+namespace\b"
+    r"|(?:^|\s)-n\s+(?P<c>[a-z0-9][a-z0-9-]*)",
+    re.I,
+)
+_NOT_NAMES = {"the", "a", "an", "this", "that", "same", "approved", "allowed", "any", "another", "other"}
+
+
+def intent_mismatch(question: str, call: ToolCall, default_namespace: str) -> str | None:
+    """Deterministic guard (DECISION D37): a state-changing call must not target a different namespace
+    than the one the user explicitly named. LLMs sometimes substitute the allowed namespace; refuse that."""
+    spec = REGISTRY.get(call.name)
+    if spec is None or spec.permission is Permission.READ or "namespace" not in spec.input_model.model_fields:
+        return None
+    named = {
+        (m.group("a") or m.group("b") or m.group("c")).lower() for m in _NAMESPACE_MENTION.finditer(question)
+    } - _NOT_NAMES
+    target = (call.args.get("namespace") or default_namespace).lower()
+    if named and target not in named:
+        return (
+            f"request named namespace {sorted(named)} but the call targets '{target}'; refusing to "
+            "substitute a different target - ask the user to confirm the intended namespace"
+        )
+    return None
