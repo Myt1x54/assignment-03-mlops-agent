@@ -15,6 +15,13 @@ rules:
   - apiGroups: [""]
     resources: ["pods", "pods/log", "services", "endpoints", "events", "configmaps"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["services/proxy"]          # GET /version of the running service (deployed model version)
+    resourceNames: ["churn-api:80", "churn-api"]
+    verbs: ["get"]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
+    verbs: ["get", "list", "watch"]
   - apiGroups: ["apps"]
     resources: ["deployments", "replicasets"]
     verbs: ["get", "list", "watch"]
