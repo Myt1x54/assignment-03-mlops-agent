@@ -138,7 +138,9 @@ def mlflow_list_experiments(args: NoInput, ctx: ToolContext) -> dict[str, Any]:
 
 
 class ListRunsIn(ToolInput):
-    experiment_names: list[str] | None = Field(default=None, description="Experiment names; all if omitted")
+    experiment_names: list[str] | None = Field(
+        default=None, description="Exact experiment names (see mlflow_list_experiments); omit to search all"
+    )
     filter_string: str | None = Field(
         default=None,
         max_length=300,
@@ -206,7 +208,9 @@ def mlflow_get_run(args: RunIdIn, ctx: ToolContext) -> dict[str, Any]:
 class BestRunIn(ToolInput):
     metric: str = Field(default="f1", pattern=r"^[A-Za-z0-9_.]+$")
     direction: str = Field(default="max", pattern=r"^(max|min)$")
-    experiment_names: list[str] | None = None
+    experiment_names: list[str] | None = Field(
+        default=None, description="Exact experiment names (see mlflow_list_experiments); omit to search all"
+    )
     data_version: str | None = Field(
         default=None, pattern=r"^[A-Za-z0-9._\-]+$", description="e.g. data-v2.0"
     )

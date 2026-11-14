@@ -172,6 +172,17 @@ def test_grounding_check_flags_invented_figures(settings, backends, monkeypatch)
         assert fig in answer
 
 
+def test_citation_check_flags_nonexistent_evidence(settings, backends):
+    agent, _ = agent_with(
+        [LLMReply(tool_calls=[ToolCall("dvc_detect_changes", {})]), LLMReply(text="In sync [E1, E6].")],
+        settings,
+    )
+    answer = agent.ask("is dvc in sync?").response.answer
+    assert "Citation check" in answer
+    assert "`E6`" in answer
+    assert "`E1`" not in answer.split("Citation check")[1].split("\n")[0]
+
+
 def test_ungrounded_figures_accepts_values_present_in_results():
     result = ToolResult(tool="t", request_id="r", status=ToolStatus.OK, data={"f1": 0.8121, "version": "7"})
     assert ungrounded_figures("F1 is 0.8121 for v7 [E1]", [result]) == []

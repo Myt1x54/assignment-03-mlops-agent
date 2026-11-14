@@ -229,6 +229,13 @@ class Orchestrator:
                 + "; ".join(f"`{r.tool}` -> {r.status.value} [{r.evidence_id}]" for r in failed)
                 + f". Facts from {', '.join(systems)} could not be confirmed by tools in this request."
             )
+        known = {r.evidence_id for r in results}
+        bogus = sorted(set(re.findall(r"E\d+", " ".join(_CITATION.findall(text)))) - known)
+        if bogus:
+            parts.append(
+                "> **Citation check:** the answer cites evidence that does not exist: "
+                + ", ".join(f"`{b}`" for b in bogus)
+            )
         ungrounded = ungrounded_figures(text, results, question) if check_grounding else []
         if ungrounded:
             parts.append(
@@ -242,7 +249,7 @@ class Orchestrator:
 _FIGURE = re.compile(
     r"(?<![\w.])(?:v\d+|\d+\.\d+|\d+(?=\s*(?:replicas?|pods?|restarts?|runs?|versions?)\b))", re.I
 )
-_CITATION = re.compile(r"\[E\d+\]")
+_CITATION = re.compile(r"\[E\d+(?:\s*,\s*E\d+)*\]")
 
 
 def ungrounded_figures(text: str, results: list[ToolResult], question: str = "") -> list[str]:
