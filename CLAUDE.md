@@ -41,6 +41,8 @@ Read these files before doing any work:
 - `kubectl` is installed; a local cluster (kind) must be created — see `INSTRUCTION.md`.
 - GitHub remote: `origin` → https://github.com/Myt1x54/assignment-03-mlops-agent.git (`gh` CLI not installed; push via git).
 - The Bash tool sandbox cannot download from files.pythonhosted.org; run `uv sync` / `uv add` from PowerShell.
+- Never rewrite repo files with PowerShell 5.1 `Get-Content | Set-Content`: it reads UTF-8 as ANSI and writes a BOM,
+  corrupting non-ASCII text (happened to PLAN.md once). Use the Edit tool or Python with `encoding="utf-8"`.
 
 ## 3. Common commands (valid once S1 is complete)
 
