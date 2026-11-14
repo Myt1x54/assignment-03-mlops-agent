@@ -137,7 +137,9 @@ def main(argv: list[str] | None = None) -> int:
         render(turn)
 
     if turns and not args.no_transcript:
-        path = save_transcript(turns, settings.agent_model, args.transcript)
+        used = getattr(llm, "model", settings.agent_model)
+        label = used if used == settings.agent_model else f"{used} (fallback from {settings.agent_model})"
+        path = save_transcript(turns, label, args.transcript)
         console.print(f"[dim]transcript saved to {path}[/dim]")
     return 0
 

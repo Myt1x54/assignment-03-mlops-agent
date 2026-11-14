@@ -195,7 +195,19 @@ class Orchestrator:
 
     def _finalize(self, text: str, results: list[ToolResult], check_grounding: bool = True) -> str:
         parts = [text.strip() or "(no answer text)"]
-        failed = [r for r in results if r.status not in (ToolStatus.OK,)]
+
+        def recovered(i: int, r: ToolResult) -> bool:
+            """A failed call followed by a successful call of the same tool (LLM corrected its input)."""
+            return any(later.tool == r.tool and later.status is ToolStatus.OK for later in results[i + 1 :])
+
+        failed = [r for i, r in enumerate(results) if r.status is not ToolStatus.OK and not recovered(i, r)]
+        retried = [r for i, r in enumerate(results) if r.status is not ToolStatus.OK and recovered(i, r)]
+        if retried:
+            parts.append(
+                "> **Corrected calls:** "
+                + "; ".join(f"`{r.tool}` -> {r.status.value} [{r.evidence_id}]" for r in retried)
+                + " (a later call of the same tool succeeded)."
+            )
         if failed:
             systems = sorted({REGISTRY[r.tool].system if r.tool in REGISTRY else r.tool for r in failed})
             parts.append(

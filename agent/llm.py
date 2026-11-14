@@ -23,6 +23,9 @@ from agent.logging_utils import get_logger
 
 log = get_logger("llm")
 
+# Placeholder accepted by Gemini for function-call history that was not produced by the current model.
+SKIP_SIGNATURE = b"skip_thought_signature_validator"
+
 
 @dataclass
 class ToolCall:
@@ -99,7 +102,7 @@ class GeminiClient:
                     delay = float(raw[:-1])
         return daily, delay
 
-    def _contents(self, history: list[dict[str, Any]], use_raw: bool = True) -> list[Any]:
+    def _contents(self, history: list[dict[str, Any]]) -> list[Any]:
         from google.genai import types
 
         contents: list[Any] = []
@@ -107,11 +110,23 @@ class GeminiClient:
             if msg["role"] == "user":
                 contents.append(types.Content(role="user", parts=[types.Part.from_text(text=msg["text"])]))
             elif msg["role"] == "assistant":
-                if use_raw and msg.get("raw") is not None:
-                    contents.append(msg["raw"])
+                raw = msg.get("raw")
+                # Native content (with thought signatures) is replayed only to the model that produced it.
+                if isinstance(raw, tuple) and raw[0] == self.model:
+                    native = raw[1]
+                    calls = [p for p in native.parts or [] if p.function_call]
+                    if calls and not any(p.thought_signature for p in calls):
+                        calls[
+                            0
+                        ].thought_signature = SKIP_SIGNATURE  # some models omit it; API still requires one
+                    contents.append(native)
                     continue
                 parts = [types.Part.from_text(text=msg["text"])] if msg.get("text") else []
-                parts += [types.Part.from_function_call(name=c.name, args=c.args) for c in msg["tool_calls"]]
+                for i, c in enumerate(msg["tool_calls"]):
+                    part = types.Part.from_function_call(name=c.name, args=c.args)
+                    if i == 0:  # history from another model/source: documented validator bypass
+                        part.thought_signature = SKIP_SIGNATURE
+                    parts.append(part)
                 contents.append(types.Content(role="model", parts=parts))
             elif msg["role"] == "tool":
                 parts = [
@@ -136,12 +151,9 @@ class GeminiClient:
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
             temperature=0.1,
         )
-        switched = False
         attempt = 0
         while True:
-            # After a model switch, rebuild history without provider-native parts (thought signatures are
-            # model-specific).
-            contents = self._contents(history, use_raw=not switched)
+            contents = self._contents(history)
             try:
                 response = self._client.models.generate_content(
                     model=self.model, contents=contents, config=config
@@ -152,7 +164,7 @@ class GeminiClient:
                 if daily and len(self.models) > 1:
                     log.warning("gemini daily quota exhausted, switching model", extra={"from": self.model})
                     self.models.pop(0)
-                    switched, attempt = True, 0
+                    attempt = 0
                     continue
                 retryable = (exc.code == 429 and not daily) or (exc.code or 0) >= 500
                 if not retryable or attempt >= self.max_retries:
@@ -174,7 +186,7 @@ class GeminiClient:
         text = "".join(
             p.text for p in candidate.content.parts or [] if p.text and not getattr(p, "thought", False)
         )
-        return LLMReply(text=text, tool_calls=calls, raw=candidate.content)
+        return LLMReply(text=text, tool_calls=calls, raw=(self.model, candidate.content))
 
 
 # --- scripted fake (tests / CI / offline demo) ----------------------------------------------------------

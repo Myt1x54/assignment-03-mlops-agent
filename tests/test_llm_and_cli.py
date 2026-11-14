@@ -82,6 +82,7 @@ def test_history_conversion_includes_tool_responses():
     )
     assert [c.role for c in contents] == ["user", "model", "user"]
     assert contents[2].parts[0].function_response.name == "mlflow_best_run"
+    assert contents[1].parts[0].thought_signature == llm_mod.SKIP_SIGNATURE  # foreign history is accepted
 
 
 def test_transcript_lists_tool_calls_and_redacts_secrets():

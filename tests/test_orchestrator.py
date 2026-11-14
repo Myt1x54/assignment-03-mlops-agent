@@ -265,6 +265,18 @@ def test_structured_logs_have_fields_and_no_secrets(settings, backends):
     assert SECRET not in stream.getvalue()
 
 
+def test_corrected_call_is_not_flagged_as_unverified(settings, backends):
+    calls = [
+        LLMReply(tool_calls=[ToolCall("mlflow_list_runs", {"experiment_names": ["nope"]})]),
+        LLMReply(tool_calls=[ToolCall("mlflow_list_runs", {})]),
+        LLMReply(text="Runs listed [E2]."),
+    ]
+    agent, _ = agent_with(calls, settings)
+    answer = agent.ask("list runs").response.answer
+    assert "Corrected calls" in answer
+    assert "Not verified" not in answer
+
+
 def test_llm_failure_is_reported_not_invented(settings, backends):
     class Broken:
         def generate(self, system, history, tools):
