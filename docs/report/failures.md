@@ -101,17 +101,25 @@ run on the DVC-tracked dataset succeeded end to end, with all 6 tasks `success`
 | **Question** | The mandatory scenario: *"Find the best recent model, identify the dataset version…, check the deployment status, and explain whether retraining is necessary."* |
 | **Transcript** | [`F3-mlflow-down-no-invention.md`](transcripts/F3-mlflow-down-no-invention.md) |
 
-- All 3 MLflow-dependent calls returned `unavailable` within about 4-10 s, because retries are capped
-  (`mlflow_best_run` [E1], `mlflow_get_run` [E6], `dvc_get_run_dataset` [E7]).
-- The answer contains **no MLflow metrics**. It lists the outage under *Uncertainties*.
+- All 3 MLflow calls returned `unavailable` within about 4-10 s, because retries are capped
+  (`mlflow_best_run` [E1], `mlflow_get_model_versions` [E2], `mlflow_get_run` [E8]).
+- The answer contains **no MLflow metrics**.
 - It still answered what other systems could prove. The deployed model version, run id and dataset came from the
-  service's live `/version` endpoint (`k8s_get_deployed_version` [E5]). Pipeline state came from Airflow [E4, E8].
+  service's live `/version` endpoint (`k8s_get_deployed_version` [E3]). Pipeline state came from Airflow [E6].
+  Dataset versions came from DVC [E7].
 - The deterministic footer marks the three failed calls as **Not verified**.
 
-**Observed weakness (kept for honesty):** the model still concluded "retraining not indicated" although model age
-could not be checked, contrary to prompt rule 6 ("a criterion you did not check is an uncertainty"). The evidence
-table and the Not-verified footer make the gap visible to the operator. A stricter fix would be a deterministic
-post-check that blocks a retraining verdict when an MLflow call failed (see Limitations in REPORT.md).
+**Weakness found and fixed (D38).** In the first recording the model still said "retraining is not indicated"
+although model age and gate status could not be checked. The orchestrator now runs a deterministic **retraining
+verdict check**: if an answer gives a retraining verdict while any policy criterion lacks a successful tool call,
+it appends:
+
+> **Retraining verdict check:** the answer gives a retraining verdict, but these policy criteria were not verified
+> by a successful tool call in this request: model age and quality-gate status (MLflow). Treat the verdict as
+> **cannot be fully determined** until they are checked.
+
+The current transcript is the re-run with this check in place. The model's own sentence ("Retraining is not
+indicated…") is kept verbatim, and the deterministic note below it overrides it for the operator.
 
 ---
 
@@ -134,10 +142,12 @@ executed.
 for*. Adding a prompt rule ("never silently change a target the user named") did **not** change the model's
 behaviour on a re-run.
 
-**Fix (D37):** a deterministic intent guard in the orchestrator. It is covered by unit tests, and the re-run shows
+**Fix (D37, extended in D38):** a deterministic intent guard in the orchestrator. It is covered by unit tests, and the re-run shows
 both write calls rejected with `IntentMismatch` before any confirmation or API call:
 - If the user's message names a namespace (`namespace X`, `X namespace`, `-n X`), every state-changing call must
   target that namespace.
+- The same applies to a named deployment (`deployment X`, `X deployment`, `deploy/X`), DAG id (snake_case ids next
+  to "dag"/"pipeline") and replica count (`N replicas`) (D38).
 - Otherwise the call is rejected with `IntentMismatch` before the human is asked and before any API call.
 
 The guarded re-run is in [`S4-deployment-diagnosis-and-guardrails.md`](transcripts/S4-deployment-diagnosis-and-guardrails.md).

@@ -236,6 +236,14 @@ class Orchestrator:
                 "> **Citation check:** the answer cites evidence that does not exist: "
                 + ", ".join(f"`{b}`" for b in bogus)
             )
+        unchecked = unverified_retraining_criteria(text, results)
+        if unchecked:
+            parts.append(
+                "> **Retraining verdict check:** the answer gives a retraining verdict, but these policy "
+                "criteria were not verified by a successful tool call in this request: "
+                + "; ".join(unchecked)
+                + ". Treat the verdict as **cannot be fully determined** until they are checked."
+            )
         ungrounded = ungrounded_figures(text, results, question) if check_grounding else []
         if ungrounded:
             parts.append(
@@ -250,6 +258,41 @@ _FIGURE = re.compile(
     r"(?<![\w.])(?:v\d+|\d+\.\d+|\d+(?=\s*(?:replicas?|pods?|restarts?|runs?|versions?)\b))", re.I
 )
 _CITATION = re.compile(r"\[E\d+(?:\s*,\s*E\d+)*\]")
+
+_RETRAIN_VERDICT = re.compile(
+    r"retrain\w*\s+(?:is\s+|was\s+)?(?:\w+ly\s+)?(?:not\s+|un)?(?:\w+ly\s+){0,2}"
+    r"(?:indicated|necessary|needed|required|recommended|warranted)"
+    r"|no\s+(?:need|reason)\s+(?:for|to)\s+retrain",
+    re.I,
+)
+
+# Policy criterion (AGENT.md §6) -> tools whose successful result can establish it (DECISION D38).
+RETRAINING_CRITERIA: dict[str, tuple[str, ...]] = {
+    "model age and quality-gate status (MLflow)": (
+        "mlflow_best_run",
+        "mlflow_get_run",
+        "mlflow_list_runs",
+        "mlflow_get_model_versions",
+    ),
+    "latest ml_training_pipeline run state (Airflow)": (
+        "airflow_list_dag_runs",
+        "airflow_get_task_instances",
+    ),
+    "newest DVC dataset version (DVC)": (
+        "dvc_list_dataset_versions",
+        "dvc_get_current_version",
+        "dvc_compare_versions",
+    ),
+}
+
+
+def unverified_retraining_criteria(text: str, results: list[ToolResult]) -> list[str]:
+    """If the answer states a retraining verdict, list the policy criteria no successful tool call covered."""
+    plain = re.sub(r"[*_`]", "", text)  # ignore markdown emphasis such as 'is **not** indicated'
+    if not _RETRAIN_VERDICT.search(plain):
+        return []
+    ok_tools = {r.tool for r in results if r.status is ToolStatus.OK}
+    return [name for name, tools in RETRAINING_CRITERIA.items() if not ok_tools.intersection(tools)]
 
 
 def ungrounded_figures(text: str, results: list[ToolResult], question: str = "") -> list[str]:
@@ -295,19 +338,62 @@ _NAMESPACE_MENTION = re.compile(
 _NOT_NAMES = {"the", "a", "an", "this", "that", "same", "approved", "allowed", "any", "another", "other"}
 
 
+_DEPLOYMENT_MENTION = re.compile(
+    r"\bdeployments?\s+[`'\"]?(?P<a>[a-z0-9][a-z0-9.-]*)"
+    r"|\b(?P<b>[a-z0-9][a-z0-9.-]*)[`'\"]?\s+deployment\b"
+    r"|\bdeploy/(?P<c>[a-z0-9][a-z0-9.-]*)",
+    re.I,
+)
+# DAG ids: snake_case ids next to the word "dag"/"pipeline" ("pipeline ml_training_pipeline",
+# "cleanup_dag DAG"), so "the training pipeline" or a file name such as churn_batch.csv is not a DAG id.
+_DAG_MENTION = re.compile(
+    r"\b(?:dag|pipeline)\s+[`'\"]?(?P<a>[a-z0-9]+(?:_[a-z0-9]+)+)\b"
+    r"|\b(?P<b>[a-z0-9]+(?:_[a-z0-9]+)+)[`'\"]?\s+(?:dag|pipeline)\b"
+    r"|\b(?P<c>[a-z0-9]+(?:_[a-z0-9]+)*_(?:dag|pipeline))\b",
+    re.I,
+)
+_REPLICA_MENTION = re.compile(r"\b(?P<a>\d{1,3})\s+(?:replicas?|pods?|instances?)\b", re.I)
+_NOT_NAMES_DEPLOY = _NOT_NAMES | {"churn", "inference", "api", "service", "my", "our", "your", "its", "it"}
+
+
+def _mentions(pattern: re.Pattern[str], text: str, exclude: set[str]) -> set[str]:
+    found = {next(g for g in m.groups() if g).lower() for m in pattern.finditer(text)}
+    return found - exclude
+
+
 def intent_mismatch(question: str, call: ToolCall, default_namespace: str) -> str | None:
-    """Deterministic guard (DECISION D37): a state-changing call must not target a different namespace
-    than the one the user explicitly named. LLMs sometimes substitute the allowed namespace; refuse that."""
+    """Deterministic guard (D37, D38): a state-changing call must target exactly what the user named.
+
+    Checked fields: namespace (``namespace X`` / ``X namespace`` / ``-n X``), deployment (``deployment X`` /
+    ``X deployment`` / ``deploy/X``), DAG id (snake_case ids such as ``ml_training_pipeline``) and replica
+    count (``N replicas``). A field is only enforced when the user's message names a value for it; LLMs
+    sometimes "helpfully" substitute an allowed value, and this refuses such calls before confirmation or
+    any API call.
+    """
     spec = REGISTRY.get(call.name)
-    if spec is None or spec.permission is Permission.READ or "namespace" not in spec.input_model.model_fields:
+    if spec is None or spec.permission is Permission.READ:
         return None
-    named = {
-        (m.group("a") or m.group("b") or m.group("c")).lower() for m in _NAMESPACE_MENTION.finditer(question)
-    } - _NOT_NAMES
-    target = (call.args.get("namespace") or default_namespace).lower()
-    if named and target not in named:
-        return (
-            f"request named namespace {sorted(named)} but the call targets '{target}'; refusing to "
-            "substitute a different target - ask the user to confirm the intended namespace"
-        )
+    fields = spec.input_model.model_fields
+    checks: list[tuple[str, set[str], str | None]] = []
+    if "namespace" in fields:
+        named = _mentions(_NAMESPACE_MENTION, question, _NOT_NAMES)
+        checks.append(("namespace", named, (call.args.get("namespace") or default_namespace).lower()))
+    if "deployment" in fields:
+        named = _mentions(_DEPLOYMENT_MENTION, question, _NOT_NAMES_DEPLOY)
+        default = fields["deployment"].default
+        checks.append(("deployment", named, str(call.args.get("deployment") or default).lower()))
+    if "dag_id" in fields:
+        named = _mentions(_DAG_MENTION, question, set())
+        default = fields["dag_id"].default
+        checks.append(("DAG", named, str(call.args.get("dag_id") or default).lower()))
+    if "replicas" in fields:
+        named = _mentions(_REPLICA_MENTION, question, set())
+        value = call.args.get("replicas")
+        checks.append(("replica count", named, None if value is None else str(value)))
+    for label, named, target in checks:
+        if named and target not in named:
+            return (
+                f"request named {label} {sorted(named)} but the call targets '{target}'; refusing to "
+                f"substitute a different target - ask the user to confirm the intended {label}"
+            )
     return None

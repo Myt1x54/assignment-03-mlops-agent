@@ -37,7 +37,8 @@ request**:
 - the evidence table at the end of every answer is generated from the actual `ToolResult` objects, not from LLM
   text;
 - deterministic post-checks flag failed systems ("Not verified"), figures that appear in no tool result
-  ("Grounding check") and citations of non-existent evidence ("Citation check").
+  ("Grounding check"), citations of non-existent evidence ("Citation check") and retraining verdicts given
+  without evidence for every policy criterion ("Retraining verdict check").
 
 ## 2. Architecture
 
@@ -150,14 +151,14 @@ Written up in detail in [`failures.md`](failures.md):
 |---|---|---|---|
 | **F1** | Injected (Kubernetes) | ConfigMap `MODEL_PATH` points to a missing file → `FileNotFoundError` in pod logs → `/readyz` 503 → stalled rollout (old pods keep serving thanks to `maxUnavailable: 0`) | Operator fixes ConfigMap; agent restarts **after human `yes`**; agent verifies 2/2 healthy serving v7 |
 | **F2** | Injected (Airflow/data) | Corrupt batch: 400 null tenures, 120 out-of-range charges, 60 unknown contract types → `validate_data` failed; 5 downstream tasks `upstream_failed`; nothing promoted | Batch removed; next run on the DVC dataset succeeded (S3) |
-| F3 | Injected (MLflow down) | All MLflow calls `unavailable`; answer contains no MLflow metrics, takes the deployed version from the live service instead, footer marks the gaps | `docker start mlflow` |
-| **U1** | **Unexpected** | LLM replaced the user-named namespace `default` with `mlops-demo`; caught by the human confirmation; prompt rule alone did not fix it | Deterministic `IntentMismatch` guard (D37) + tests; re-run rejects both calls |
+| F3 | Injected (MLflow down) | All MLflow calls `unavailable`; answer contains no MLflow metrics, takes the deployed version from the live service instead, footer marks the gaps; the **retraining verdict check** (D38) downgrades the model's verdict to *cannot be fully determined* | `docker start mlflow` |
+| **U1** | **Unexpected** | LLM replaced the user-named namespace `default` with `mlops-demo`; caught by the human confirmation; prompt rule alone did not fix it | Deterministic `IntentMismatch` guard (D37), extended to deployment/DAG/replicas (D38) + tests; re-run rejects both calls |
 
 ## 7. Testing, reliability and CI
 
 | | |
 |---|---|
-| Unit tests | **120**, all external services mocked (fake MLflow client, fake Airflow REST, fake K8s APIs, fake git/dvc subprocess, scripted LLM); about 10 s |
+| Unit tests | **144**, all external services mocked (fake MLflow client, fake Airflow REST, fake K8s APIs, fake git/dvc subprocess, scripted LLM); about 10 s |
 | Live integration tests | 10 (`pytest -m integration`), including "the MLflow champion is the deployed model" |
 | Coverage | 77% of `agent/`, `training/`, `api/` |
 | CI | GitHub Actions on every PR and push: `uv sync --locked`, ruff lint + format check, pytest + coverage artifact, `kubeconform -strict` on the manifests, check of required Deployment settings |
@@ -197,16 +198,16 @@ Captured from the live platform (one read call and one rejected write in the sam
 | LLM triggers an action on its own | Write tools return `confirmation_required`; only the orchestrator can re-execute, after a human types `yes`, with an HMAC token bound to tool + exact args, valid 5 min and never shown to the LLM (D13, D33) |
 | LLM passes `confirmed=true` | All inputs `extra="forbid"` → validation error (`test_llm_cannot_inject_confirmation_field`) |
 | Wrong namespace / DAG / scale | Allow-lists checked **before** any confirmation or API call (`rejected`) |
-| LLM substitutes the user's target | `IntentMismatch` guard (D37) |
+| LLM substitutes the user's target | `IntentMismatch` guard for namespace, deployment, DAG id and replica count (D37, D38) |
 | Arbitrary commands | `git`/`dvc` subcommand allow-list, `shell=False`, revision and path validation (no options, ranges or `..`) |
 | Dataset checkout damaging the workspace | Only into an isolated scratch `git worktree` |
 | Cluster blast radius | ServiceAccount RBAC: read + `patch` deployments in `mlops-demo` only; no Secrets |
 | Secret leakage | `.env` only (gitignored), `SecretStr`, redaction in logs, tool output and transcripts; CI needs no secrets |
-| Hallucinated facts | Evidence ids, generated evidence table, Not-verified footer, grounding and citation checks |
+| Hallucinated facts | Evidence ids, generated evidence table, Not-verified footer, grounding, citation and retraining-verdict checks |
 
 ## 9. Engineering decisions (defense)
 
-The full log is [`DECISION.md`](../../DECISION.md) (D0-D37). The choices most likely to be questioned:
+The full log is [`DECISION.md`](../../DECISION.md) (D0-D38). The choices most likely to be questioned:
 
 - **Hand-written orchestrator instead of LangChain/LangGraph (D3).**
   - About 310 lines, fully testable with a scripted LLM.
@@ -236,9 +237,8 @@ The full log is [`DECISION.md`](../../DECISION.md) (D0-D37). The choices most li
 | Limitation | Improvement |
 |---|---|
 | Free-tier quotas (≈20 requests/day/model) limit how many conversations can run per day; lite models sometimes guess arguments (fixed by tool errors and self-correction) | Paid tier or a stronger model; argument enumerations (e.g. experiment names) injected into tool schemas at start-up |
-| F3 showed the model can still reach a retraining verdict with an unchecked criterion | Deterministic post-check: when any retraining criterion's source system failed, replace the verdict with "cannot be determined" |
 | The grounding check is a regex over numbers and versions; it cannot catch invented *qualitative* claims | Claim extraction + entailment check against tool payloads; or require every sentence to carry a citation |
-| The intent guard covers namespaces only | Extend to deployment names, DAG ids and replica counts mentioned in the request |
+| The intent guard and verdict check are regex-based; unusual phrasings (e.g. a deployment named without the word "deployment") are not enforced | Structured intent extraction (a constrained LLM call or a slot-filling parser) compared field-by-field with each write call |
 | Single-user CLI; confirmations on stdin | Web/Slack front end with authenticated approvers and an audit log of approvals |
 | Local stack: sqlite MLflow backend, local DVC remote, LocalExecutor | Postgres + S3/MinIO for MLflow and DVC, CeleryExecutor or KubernetesExecutor, Airflow and MLflow deployed into the cluster |
 | Airflow tasks share the repo workspace with local `dvc repro` (outputs overwrite each other) | Run DAG tasks in their own worktree or container image with the code baked in; store outputs only as MLflow/DVC artifacts |

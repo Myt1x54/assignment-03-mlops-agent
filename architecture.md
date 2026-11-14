@@ -137,6 +137,9 @@ and no other namespaces.
 | Write tool without approval | `confirmation_required` → human prompt | nothing executes unless the human types `yes` |
 | LLM API down / quota | orchestrator `stopped_reason=llm_error` | honest error, no answer invented |
 | Figures in the answer not present in any tool result | — | "Grounding check" warning listing them |
+| Answer cites an evidence id that does not exist | — | "Citation check" warning |
+| Retraining verdict without a successful MLflow + Airflow + DVC check | — | "Retraining verdict check": verdict treated as *cannot be fully determined* |
+| Write call targets a different namespace/deployment/DAG/replica count than the user named | `rejected` (`IntentMismatch`) | refused before confirmation; agent asks which target was meant |
 
 ## 6. Deployment topology
 

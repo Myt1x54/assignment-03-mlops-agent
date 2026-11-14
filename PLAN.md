@@ -19,12 +19,12 @@ Decisions referenced as `D<n>` are in `DECISION.md`.
 | S10 | MLflow tools | MLflow (15) | AWAITING VERIFICATION |
 | S11 | Airflow tools | Airflow (15) | AWAITING VERIFICATION |
 | S12 | Kubernetes tools (with confirmation + namespace guard) | K8s (15) | AWAITING VERIFICATION |
-| S13 | LLM orchestrator + CLI + mandatory scenario | Integration (15) | IN PROGRESS (code + offline tests done; live Gemini run needs API key) |
+| S13 | LLM orchestrator + CLI + mandatory scenario | Integration (15) | AWAITING VERIFICATION |
 | S14 | Test suite (≥ 8, target ~25) | Testing (10) | AWAITING VERIFICATION |
-| S15 | GitHub repo + Actions CI | CI (5) | IN PROGRESS (CI on main; PR check pending) |
-| S16 | Failure injection & diagnosis (2+) | Testing / Demo | IN PROGRESS (F1/F2/F3 injection + tool-level diagnosis done; agent transcripts need Gemini key) |
-| S17 | Demo scenarios & evidence capture | Demo (10) | IN PROGRESS (screenshots done; five conversations need Gemini key) |
-| S18 | Documentation, report, final review, submission | Submission | IN PROGRESS (README + architecture done; REPORT.md after transcripts) |
+| S15 | GitHub repo + Actions CI | CI (5) | AWAITING VERIFICATION (PR CI run on submission-review) |
+| S16 | Failure injection & diagnosis (2+) | Testing / Demo | AWAITING VERIFICATION |
+| S17 | Demo scenarios & evidence capture | Demo (10) | AWAITING VERIFICATION |
+| S18 | Documentation, report, final review, submission | Submission | AWAITING VERIFICATION |
 
 ---
 
