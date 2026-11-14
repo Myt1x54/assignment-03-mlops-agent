@@ -25,5 +25,5 @@ mlflow:
 
 quality_gate:
   metric: f1
-  min_f1: 0.70
-  min_roc_auc: 0.80
+  min_f1: 0.70           # promotion blocked below this F1 on the held-out test set
+  min_roc_auc: 0.80      # and below this ROC-AUC
