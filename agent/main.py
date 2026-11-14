@@ -40,7 +40,9 @@ def terminal_confirm(summary: str, action: dict[str, Any]) -> bool:
             border_style="yellow",
         )
     )
-    return Prompt.ask("Type 'yes' to execute, anything else to cancel", default="no").strip().lower() == "yes"
+    answer = Prompt.ask("Type 'yes' to execute, anything else to cancel", default="no")
+    # Strip a UTF-8 BOM: Windows PowerShell 5.1 prefixes text piped into native programs with one.
+    return answer.lstrip("\ufeff").strip().lower() == "yes"
 
 
 def render(turn: Turn) -> None:
@@ -98,7 +100,11 @@ def main(argv: list[str] | None = None) -> int:
     settings = get_settings()
     setup_logging(args.log_level or settings.log_level)
     try:
-        llm = GeminiClient(settings.gemini_api_key.get_secret_value(), settings.agent_model)
+        llm = GeminiClient(
+            settings.gemini_api_key.get_secret_value(),
+            settings.agent_model,
+            fallback_models=settings.fallback_models,
+        )
     except LLMError as exc:
         console.print(f"[red]{exc}[/red]")
         return 2

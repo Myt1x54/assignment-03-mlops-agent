@@ -16,7 +16,7 @@ from agent.schemas import AgentResponse, ToolResult, ToolStatus
 
 def gemini(responses) -> GeminiClient:
     client = object.__new__(GeminiClient)
-    client.model, client.max_retries, client.base_delay = "gemini-test", 3, 0.0
+    client.models, client.max_retries, client.base_delay, client.max_sleep = ["gemini-test"], 3, 0.0, 0.0
     queue = list(responses)
 
     def generate_content(model, contents, config):
@@ -99,3 +99,51 @@ def test_transcript_lists_tool_calls_and_redacts_secrets():
     assert '**E1** `airflow_list_dags({"limit": 5})` -> `ok`' in md
     assert "declined" in md
     assert "abc123secretvalue" not in md
+
+
+def test_daily_quota_switches_to_fallback_model(monkeypatch):
+    monkeypatch.setattr(llm_mod.time, "sleep", lambda s: None)
+    daily = errors.APIError(
+        429,
+        {"error": {"code": 429, "message": "quota", "status": "RESOURCE_EXHAUSTED", "details": [
+            {"violations": [{"quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier"}]},
+            {"retryDelay": "77691s"},
+        ]}},
+    )  # fmt: skip
+    seen = []
+    client = gemini([])
+    client.models = ["gemini-main", "gemini-lite"]
+    answers = [daily, response_with([types.Part.from_text(text="from fallback")])]
+
+    def generate_content(model, contents, config):
+        seen.append(model)
+        item = answers.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+    client._client = NS(models=NS(generate_content=generate_content))
+    reply = client.generate("sys", [{"role": "user", "text": "hi"}], TOOLS)
+    assert reply.text == "from fallback"
+    assert seen == ["gemini-main", "gemini-lite"]
+    assert client.model == "gemini-lite"
+
+
+def test_per_minute_limit_uses_server_retry_delay(monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(llm_mod.time, "sleep", sleeps.append)
+    minute = errors.APIError(
+        429,
+        {
+            "error": {
+                "code": 429,
+                "message": "rate",
+                "status": "RESOURCE_EXHAUSTED",
+                "details": [{"retryDelay": "7s"}],
+            }
+        },
+    )
+    client = gemini([minute, response_with([types.Part.from_text(text="ok")])])
+    client.max_sleep = 65.0
+    assert client.generate("sys", [{"role": "user", "text": "hi"}], TOOLS).text == "ok"
+    assert sleeps == [7.0]

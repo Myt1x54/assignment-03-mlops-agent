@@ -455,7 +455,13 @@ def k8s_restart_deployment(args: DeploymentIn, ctx: ToolContext) -> dict[str, An
     stamp = datetime.now(UTC).isoformat(timespec="seconds")
     body = {"spec": {"template": {"metadata": {"annotations": {"kubectl.kubernetes.io/restartedAt": stamp}}}}}
     kcall(ctx, get_apis(ctx).apps.patch_namespaced_deployment, args.deployment, ns, body)
-    return {"restarted": True, "deployment": args.deployment, "namespace": ns, "restartedAt": stamp}
+    return {
+        "restarted": True,
+        "deployment": args.deployment,
+        "namespace": ns,
+        "restartedAt": stamp,
+        "note": "rollout initiated, not yet complete; verify later with k8s_find_unhealthy",
+    }
 
 
 @tool(
@@ -494,4 +500,5 @@ def k8s_scale_deployment(args: ScaleIn, ctx: ToolContext) -> dict[str, Any]:
         "namespace": ns,
         "from": current,
         "to": args.replicas,
+        "note": "scale requested; new pods may still be starting - verify with k8s_list_deployments",
     }

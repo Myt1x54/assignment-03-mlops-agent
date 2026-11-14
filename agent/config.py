@@ -26,6 +26,7 @@ class Settings(BaseSettings):
 
     gemini_api_key: SecretStr = SecretStr("")
     agent_model: str = "gemini-3.5-flash"
+    agent_fallback_models: str = "gemini-3.5-flash-lite,gemini-3.1-flash-lite"
 
     mlflow_tracking_uri: str = "http://localhost:5000"
 
@@ -44,6 +45,10 @@ class Settings(BaseSettings):
 
     repo_root: Path = REPO_ROOT
     policy_path: Path = DEFAULT_POLICY
+
+    @property
+    def fallback_models(self) -> list[str]:
+        return _csv(self.agent_fallback_models)
 
     @property
     def approved_dags(self) -> list[str]:

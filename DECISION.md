@@ -269,3 +269,14 @@ Decisions are never renumbered or deleted.
   timeout so a slow model fails (5xx/timeouts are retried with backoff) instead of hanging the CLI. Supersedes the
   model choice in D25 (the provider choice stays).
 - **Status:** Accepted (2026-11-14)
+
+## D36 — Free-tier resilience: honour retryDelay, fall back across models on daily quota
+- **Context:** During the demos the free tier returned `429 RESOURCE_EXHAUSTED`, both as a per-minute limit and
+  as a per-day quota (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`) whose `retryDelay` is many hours.
+- **Decision:** `GeminiClient` parses the error body. Per-minute limits wait the server's `retryDelay` (capped at
+  65 s) or exponential backoff. An exhausted daily quota switches immediately to the next model in
+  `AGENT_FALLBACK_MODELS` (default `gemini-3.5-flash-lite,gemini-3.1-flash-lite`). After a switch the history is
+  rebuilt without provider-native parts, because thought signatures belong to one model.
+- **Rationale:** Keeps the agent usable on a free key without hiding failures. If every model is exhausted the
+  orchestrator reports `llm_error` honestly instead of inventing an answer.
+- **Status:** Accepted (2026-11-14)
