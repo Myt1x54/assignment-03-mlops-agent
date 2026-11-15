@@ -91,6 +91,12 @@ uv run dvc repro                          # rebuild pipeline outputs (processed 
 uv run dvc status                         # -> "Data and pipelines are up to date."
 ```
 
+Notes from a fresh-clone dry run:
+- On **Windows**, clone into a short path (e.g. `C:\src\assignment-03-mlops-agent`) or enable long paths. DVC's run
+  cache uses deep paths, and a very deep clone location exceeds the 260-character `MAX_PATH` limit.
+- After `dvc repro`, `dvc.lock` differs only in the hash of `models/train_info.json`, which records wall-clock
+  training time. The trained model (`models/model.joblib`) is byte-identical to the committed one.
+
 To reproduce an older version:
 
 ```bash
