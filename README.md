@@ -86,8 +86,9 @@ verifies each md5 against the pointer stored at its git tag:
 
 ```bash
 uv run python scripts/bootstrap_data.py   # regenerate + verify md5 + fill DVC cache + dvc push
-uv run dvc status                         # -> "Data and pipelines are up to date."
 uv run dvc diff data-v1.0 data-v2.0       # -> modified: data/raw/churn.csv
+uv run dvc repro                          # rebuild pipeline outputs (processed data, model, reports)
+uv run dvc status                         # -> "Data and pipelines are up to date."
 ```
 
 To reproduce an older version:
