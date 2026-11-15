@@ -8,23 +8,23 @@ Decisions referenced as `D<n>` are in `DECISION.md`.
 |---|---|---|---|
 | S0 | Planning documents | — | DONE (verified 2026-11-10) |
 | S1 | Repository scaffold & reproducible environment | CI (5) | DONE (verified 2026-11-13) |
-| S2 | Dataset generation & DVC versioning | DVC (15) | AWAITING VERIFICATION |
-| S3 | Training code with MLflow logging & provenance | MLflow (15) | AWAITING VERIFICATION |
-| S4 | Local infra: MLflow server (docker compose) + seeded experiments | MLflow (15) | AWAITING VERIFICATION |
-| S5 | FastAPI inference service + Dockerfile | K8s (15) | AWAITING VERIFICATION |
-| S6 | Kubernetes cluster (kind) + manifests + deployment | K8s (15) | AWAITING VERIFICATION |
-| S7 | Airflow 3 + training DAG with quality gate | Airflow (15) | AWAITING VERIFICATION |
-| S8 | Agent core: schemas, tool registry, logging, safety layer | Integration / Safety | AWAITING VERIFICATION |
-| S9 | DVC tools | DVC (15) | AWAITING VERIFICATION |
-| S10 | MLflow tools | MLflow (15) | AWAITING VERIFICATION |
-| S11 | Airflow tools | Airflow (15) | AWAITING VERIFICATION |
-| S12 | Kubernetes tools (with confirmation + namespace guard) | K8s (15) | AWAITING VERIFICATION |
-| S13 | LLM orchestrator + CLI + mandatory scenario | Integration (15) | AWAITING VERIFICATION |
-| S14 | Test suite (≥ 8, target ~25) | Testing (10) | AWAITING VERIFICATION |
-| S15 | GitHub repo + Actions CI | CI (5) | AWAITING VERIFICATION (PR CI run on submission-review) |
-| S16 | Failure injection & diagnosis (2+) | Testing / Demo | AWAITING VERIFICATION |
-| S17 | Demo scenarios & evidence capture | Demo (10) | AWAITING VERIFICATION |
-| S18 | Documentation, report, final review, submission | Submission | AWAITING VERIFICATION |
+| S2 | Dataset generation & DVC versioning | DVC (15) | DONE (verified 2026-11-15) |
+| S3 | Training code with MLflow logging & provenance | MLflow (15) | DONE (verified 2026-11-15) |
+| S4 | Local infra: MLflow server (docker compose) + seeded experiments | MLflow (15) | DONE (verified 2026-11-15) |
+| S5 | FastAPI inference service + Dockerfile | K8s (15) | DONE (verified 2026-11-15) |
+| S6 | Kubernetes cluster (kind) + manifests + deployment | K8s (15) | DONE (verified 2026-11-15) |
+| S7 | Airflow 3 + training DAG with quality gate | Airflow (15) | DONE (verified 2026-11-15) |
+| S8 | Agent core: schemas, tool registry, logging, safety layer | Integration / Safety | DONE (verified 2026-11-15) |
+| S9 | DVC tools | DVC (15) | DONE (verified 2026-11-15) |
+| S10 | MLflow tools | MLflow (15) | DONE (verified 2026-11-15) |
+| S11 | Airflow tools | Airflow (15) | DONE (verified 2026-11-15) |
+| S12 | Kubernetes tools (with confirmation + namespace guard) | K8s (15) | DONE (verified 2026-11-15) |
+| S13 | LLM orchestrator + CLI + mandatory scenario | Integration (15) | DONE (verified 2026-11-15) |
+| S14 | Test suite (≥ 8, target ~25) | Testing (10) | DONE (verified 2026-11-15) |
+| S15 | GitHub repo + Actions CI | CI (5) | DONE (verified 2026-11-15) |
+| S16 | Failure injection & diagnosis (2+) | Testing / Demo | DONE (verified 2026-11-15) |
+| S17 | Demo scenarios & evidence capture | Demo (10) | DONE (verified 2026-11-15) |
+| S18 | Documentation, report, final review, submission | Submission | DONE (verified 2026-11-15) |
 
 ---
 
